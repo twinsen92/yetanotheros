@@ -1,0 +1,9 @@
+*.iso
+isodir
+sysroot
+env.sh
+.settings/*
+!.settings/language.settings.xml
+.tags*
+*.log
+*.gch
