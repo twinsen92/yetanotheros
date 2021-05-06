@@ -1,3 +1,4 @@
+/* kernel.c - main kernel compilation unit */
 #include <kernel/debug.h>
 
 void kernel_main(void)

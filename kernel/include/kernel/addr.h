@@ -1,3 +1,4 @@
+/* addr.h - address types */
 #ifndef _KERNEL_ADDR_H
 #define _KERNEL_ADDR_H
 

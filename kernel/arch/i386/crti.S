@@ -1,3 +1,4 @@
+/* crti.S - C static initialization */
 .section .init
 .global _init
 .type _init, @function

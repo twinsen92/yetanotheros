@@ -1,3 +1,4 @@
+/* cdefs.h - various compiler definitions of types, macros etc. */
 #ifndef _KERNEL_CDEFS_H
 #define _KERNEL_CDEFS_H
 
