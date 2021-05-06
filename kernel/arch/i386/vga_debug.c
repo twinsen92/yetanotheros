@@ -1,11 +1,13 @@
 /* vga_debug.c - VGA backed debug implementation */
-#include <kernel/debug.h>
 
-#include "vga.h"
+#include <kernel/cdefs.h>
+#include <kernel/debug.h>
+#include <arch/boot_layout.h>
+#include <arch/vga.h>
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;
-static uint16_t* const VGA_MEMORY = (uint16_t*) 0xB8000;
+static uint16_t* const VGA_MEMORY = (uint16_t*) get_low_vaddr(0xB8000);
 
 static size_t terminal_row;
 static size_t terminal_column;
