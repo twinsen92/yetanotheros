@@ -2,29 +2,30 @@
 
 #include <kernel/cdefs.h>
 #include <kernel/utils.h>
-#include <arch/segmentation.h>
+#include <arch/gdt.h>
+#include <arch/seg_types.h>
 
 volatile tss_t cpu_tss;
 
 static seg_t _cpu_gdt[6];
 seg_t *cpu_gdt = _cpu_gdt;
 
-gdtr_t cpu_gdtr = {
+dtr_t cpu_gdtr = {
 	sizeof(_cpu_gdt), (vaddr32_t)_cpu_gdt
 };
 
-void init_segmentation(void)
+void init_gdt(void)
 {
 	/* Create the GDT. */
-	cpu_gdt[0] = seg_construct(0, 0, 0);
-	cpu_gdt[1] = seg_construct(0, 0xffffffff, GDT_CODE32_FLAGS | SEG_BIT_RING(0));
-	cpu_gdt[2] = seg_construct(0, 0xffffffff, GDT_DATA32_FLAGS | SEG_BIT_RING(0));
-	cpu_gdt[3] = seg_construct(0, 0xffffffff, GDT_CODE32_FLAGS | SEG_BIT_RING(3));
-	cpu_gdt[4] = seg_construct(0, 0xffffffff, GDT_DATA32_FLAGS | SEG_BIT_RING(3));
-	cpu_gdt[5] = seg_construct((uint32_t)&cpu_tss, sizeof(tss_t), GDT_TSS_FLAGS | SEG_BIT_RING(0));
+	cpu_gdt[0] = gdte_construct(0, 0, 0);
+	cpu_gdt[1] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(0));
+	cpu_gdt[2] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(0));
+	cpu_gdt[3] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(3));
+	cpu_gdt[4] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(3));
+	cpu_gdt[5] = gdte_construct((uint32_t)&cpu_tss, sizeof(tss_t), GDTE_TSS_FLAGS | SEG_BIT_RING(0));
 
 	/* Load the GDT. */
-	asm volatile ("lgdt (%0)" : : "r" (&cpu_gdtr) : "memory");
+	asm_ldtr(gdt, &cpu_gdtr);
 
 	/* Jump into the kernel code segment. */
 	asm volatile ("ljmp %0, $_with_kernel_cs; _with_kernel_cs: " : : "i" (KERNEL_CODE_SELECTOR));

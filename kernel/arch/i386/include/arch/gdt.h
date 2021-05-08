@@ -1,20 +1,9 @@
-/* segmentation.h - x86 segmentation structures and declarations */
-#ifndef ARCH_I386_SEGMENTATION_H
-#define ARCH_I386_SEGMENTATION_H
+/* gdt.h - x86 GDT structures and declarations */
+#ifndef ARCH_I386_GDT_H
+#define ARCH_I386_GDT_H
 
-#include <kernel/addr.h>
 #include <kernel/cdefs.h>
-
-/* Structures */
-
-typedef struct
-{
-	uint16_t size;
-	vaddr32_t offset;
-} __attribute__((packed))
-gdtr_t;
-
-typedef uint64_t seg_t;
+#include <arch/seg_types.h>
 
 typedef struct
 {
@@ -75,35 +64,33 @@ tss_t;
 
 /* Access flags */
 
-#define SEG_BIT_ACCESSED 0x100 /* Entry has been accessed. Set by CPU. */
-#define SEG_BIT_CS_READABLE 0x200 /* Code segment is readable. */
-#define SEG_BIT_DS_WRITABLE 0x200 /* Data segment is writable. */
-#define SEG_BIT_DS_DOWN 0x400 /* Data segment grows downwards (limit greater than base.) */
-#define SEG_BIT_CS_CONFORM 0x400 /* Code segment can be accessed by lower rings. */
-#define SEG_BIT_CS_EXECUTABLE 0x800 /* Code segment is executable. */
-#define SEG_BIT_GDT_ENTRY 0x1000 /* GDT segment. */
-#define SEG_BIT_RING(r) ((r) << 13) /* Ring macro. */
-#define SEG_BIT_PRESENT 0x8000 /* Segment is present and usable. */
+#define GDTE_BIT_ACCESSED 0x100 /* Entry has been accessed. Set by CPU. */
+#define GDTE_BIT_CS_READABLE 0x200 /* Code segment is readable. */
+#define GDTE_BIT_DS_WRITABLE 0x200 /* Data segment is writable. */
+#define GDTE_BIT_DS_DOWN 0x400 /* Data segment grows downwards (limit greater than base.) */
+#define GDTE_BIT_CS_CONFORM 0x400 /* Code segment can be accessed by lower rings. */
+#define GDTE_BIT_CS_EXECUTABLE 0x800 /* Code segment is executable. */
+#define GDTE_BIT 0x1000 /* GDT segment. */
 
 /* Type flags */
 
-#define SEG_BIT_SOFTWARE 0x100000 /* Segment is for software information only. */
-#define SEG_BIT_64 0x200000 /* 64-bit (long) mode segment. */
-#define SEG_BIT_32 0x400000 /* 32-bit mode segment. */
-#define SEG_BIT_PAGE 0x800000 /* Segment has page granularity. */
+#define GDTE_BIT_SOFTWARE 0x100000 /* Segment is for software information only. */
+#define GDTE_BIT_64 0x200000 /* 64-bit (long) mode segment. */
+#define GDTE_BIT_32 0x400000 /* 32-bit mode segment. */
+#define GDTE_BIT_PAGE 0x800000 /* Segment has page granularity. */
 
 /* Common flag sets */
 
-#define GDT_CODE32_FLAGS (SEG_BIT_CS_READABLE | SEG_BIT_CS_EXECUTABLE | SEG_BIT_GDT_ENTRY \
-	| SEG_BIT_PRESENT | SEG_BIT_32 | SEG_BIT_PAGE)
-#define GDT_DATA32_FLAGS (SEG_BIT_DS_WRITABLE | SEG_BIT_GDT_ENTRY | SEG_BIT_PRESENT | SEG_BIT_32 \
-	| SEG_BIT_PAGE)
-#define GDT_TSS_FLAGS (SEG_BIT_ACCESSED | SEG_BIT_CS_EXECUTABLE | SEG_BIT_PRESENT | SEG_BIT_32 \
-	| SEG_BIT_PAGE)
+#define GDTE_CODE32_FLAGS (GDTE_BIT_CS_READABLE | GDTE_BIT_CS_EXECUTABLE | GDTE_BIT \
+	| SEG_BIT_PRESENT | GDTE_BIT_32 | GDTE_BIT_PAGE)
+#define GDTE_DATA32_FLAGS (GDTE_BIT_DS_WRITABLE | GDTE_BIT | SEG_BIT_PRESENT | GDTE_BIT_32 \
+	| GDTE_BIT_PAGE)
+#define GDTE_TSS_FLAGS (GDTE_BIT_ACCESSED | GDTE_BIT_CS_EXECUTABLE | SEG_BIT_PRESENT \
+	| GDTE_BIT_32 | GDTE_BIT_PAGE)
 
 /* Macros and inlines. */
 
-static inline seg_t seg_construct(uint32_t base, uint32_t limit, uint32_t flags) {
+static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags) {
 	seg_t seg = 0;
 
 	/* Modify upper 32 bits. */
@@ -137,10 +124,10 @@ static inline seg_t seg_construct(uint32_t base, uint32_t limit, uint32_t flags)
 #define USER_DATA_SELECTOR (SEG_SELECTOR(4) | RING_SELECTOR(3))
 #define USER_TSS_SELECTOR (SEG_SELECTOR(5) | RING_SELECTOR(3))
 
-extern gdtr_t cpu_gdtr;
+extern dtr_t cpu_gdtr;
 extern seg_t *cpu_gdt;
 extern volatile tss_t cpu_tss;
 
-void init_segmentation(void);
+void init_gdt(void);
 
 #endif
