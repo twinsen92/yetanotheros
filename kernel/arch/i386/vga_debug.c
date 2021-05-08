@@ -143,8 +143,7 @@ int kdprintf(const char* restrict format, ...)
 	return written;
 }
 
-__attribute__((__noreturn__))
-void kabort(void)
+noreturn kabort(void)
 {
 	kdprintf("kernel: panic: kabort()\n");
 	asm volatile("cli":::"memory");
@@ -155,8 +154,7 @@ void kabort(void)
 	__builtin_unreachable();
 }
 
-__attribute__((__noreturn__))
-void _kassert_failed(const char *expr, const char *file, unsigned int line)
+noreturn _kassert_failed(const char *expr, const char *file, unsigned int line)
 {
 	kdprintf("%s:%d:assertion %s failed\n", file, line, expr);
 	kabort();

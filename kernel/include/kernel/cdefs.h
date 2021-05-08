@@ -10,4 +10,6 @@
 
 #include <sys/cdefs.h>
 
+#define noreturn __attribute__((__noreturn__)) void
+
 #endif

@@ -8,11 +8,9 @@ void debug_initialize(void);
 
 int kdprintf(const char* __restrict, ...);
 
-__attribute__((__noreturn__))
-void kabort(void);
+noreturn kabort(void);
 
-__attribute__((__noreturn__))
-void _kassert_failed(const char *expr, const char *file, unsigned int line);
+noreturn _kassert_failed(const char *expr, const char *file, unsigned int line);
 
 #define kassert(expr)	\
 	if (!(expr))		\
