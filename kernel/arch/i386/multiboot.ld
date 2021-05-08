@@ -20,7 +20,8 @@ SECTIONS
 		   the bootloader won't recognize the file format. */
 		*(.multiboot)
 
-		/* boot.S maps only the first 4 MiB of memory so we want the entire boot stage to be there. */
+		/* multiboot.S maps only the first 4 MiB of memory so we want the entire boot stage to be
+		   there. */
 		arch/i386/boot/*.o
 
 		/* Keep track where the boot objects end so that we can verify that they're mapped during

@@ -1,16 +1,14 @@
-	# Declare constants for the multiboot header.
-	.set ALIGN,    1<<0             # align loaded modules on page boundaries
-	.set MEMINFO,  1<<1             # provide memory map
-	.set FLAGS,    ALIGN | MEMINFO  # this is the Multiboot 'flag' field
-	.set MAGIC,    0x1BADB002       # 'magic number' lets bootloader find the header
-	.set CHECKSUM, -(MAGIC + FLAGS) # checksum of above, to prove we are multiboot
+/* multiboot.S - x86 boot code. This file contains _start, which is the first procedure the bootloader
+   calls. */
 
-	.set KERNEL_BASE_VADDR, 0xC0000000
-	.set PAGE_PRESENT_BIT, 1
-	.set PAGE_RW_BIT, 2
-	.set PAGE_FLAGS, PAGE_RW_BIT | PAGE_PRESENT_BIT
+# Declare constants for the multiboot header.
+.set ALIGN,    1<<0             # align loaded modules on page boundaries
+.set MEMINFO,  1<<1             # provide memory map
+.set FLAGS,    ALIGN | MEMINFO  # this is the Multiboot 'flag' field
+.set MAGIC,    0x1BADB002       # 'magic number' lets bootloader find the header
+.set CHECKSUM, -(MAGIC + FLAGS) # checksum of above, to prove we are multiboot
 
-	# Declare a header as in the Multiboot Standard.
+# Declare a header as in the Multiboot Standard.
 .section .multiboot
 	.align 4096
 	.long MAGIC
@@ -18,6 +16,11 @@
 	.long CHECKSUM
 	# Reserve room for the rest of the multiboot header.
 	.skip 8180
+
+.set KERNEL_BASE_VADDR, 0xC0000000
+.set PAGE_PRESENT_BIT, 1
+.set PAGE_RW_BIT, 2
+.set PAGE_FLAGS, PAGE_RW_BIT | PAGE_PRESENT_BIT
 
 .data
 	.align 4096
@@ -103,8 +106,8 @@ _start_with_paging:
 	# Initialize debug subsystem.
 	call debug_initialize
 
-	# Transfer control to the main kernel.
-	call kernel_main
+	# Continue multiboot init in C code.
+	call multiboot_x86_init
 
 	# Hang if kernel_main unexpectedly returns.
 	cli

@@ -38,11 +38,6 @@ void debug_initialize(void)
 	}
 }
 
-static void terminal_setcolor(uint8_t color)
-{
-	terminal_color = color;
-}
-
 static void terminal_putentryat(unsigned char c, uint8_t color, size_t x, size_t y)
 {
 	const size_t index = y * VGA_WIDTH + x;
@@ -59,17 +54,6 @@ static void terminal_putchar(char c)
 		if (++terminal_row == VGA_HEIGHT)
 			terminal_row = 0;
 	}
-}
-
-static void terminal_write(const char* data, size_t size)
-{
-	for (size_t i = 0; i < size; i++)
-		terminal_putchar(data[i]);
-}
-
-static void terminal_writestring(const char* data)
-{
-	terminal_write(data, strlen(data));
 }
 
 static bool print(const char* data, size_t length)

@@ -50,11 +50,11 @@ $(ARCHDIR)/crtn.o \
 .PHONY: all clean install install-headers install-kernel
 .SUFFIXES: .o .c .S
 
-all: yaos2.kernel
+all: yaos2_multiboot.kernel
 
-yaos2.kernel: $(OBJS) $(ARCHDIR)/linker.ld
-	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
-	grub-file --is-x86-multiboot yaos2.kernel
+yaos2_multiboot.kernel: $(OBJS) $(ARCHDIR)/multiboot.ld
+	$(CC) -T $(ARCHDIR)/multiboot.ld -o $@ $(CFLAGS) $(LINK_LIST)
+	grub-file --is-x86-multiboot yaos2_multiboot.kernel
 
 $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	OBJ=`$(CC) $(CFLAGS) $(LDFLAGS) -print-file-name=$(@F)` && cp "$$OBJ" $@
@@ -66,7 +66,7 @@ $(ARCHDIR)/crtbegin.o $(ARCHDIR)/crtend.o:
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
 
 clean:
-	rm -f yaos2.kernel
+	rm -f yaos2_multiboot.kernel
 	rm -f $(OBJS) *.o */*.o */*/*.o
 	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
 
@@ -77,8 +77,8 @@ install-headers:
 	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
 	cp -R --preserve=timestamps $(ARCHDIR)/include/. $(DESTDIR)$(INCLUDEDIR)/.
 
-install-kernel: yaos2.kernel
+install-kernel: yaos2_multiboot.kernel
 	mkdir -p $(DESTDIR)$(BOOTDIR)
-	cp yaos2.kernel $(DESTDIR)$(BOOTDIR)
+	cp yaos2_multiboot.kernel $(DESTDIR)$(BOOTDIR)
 
 -include $(OBJS:.o=.d)
