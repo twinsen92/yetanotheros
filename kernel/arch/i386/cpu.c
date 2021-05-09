@@ -13,6 +13,9 @@ void init_cpu(void)
 	cpu_force_cli();
 	cpu.int_enabled = false;
 	cpu.cli_stack = 0;
+
+	if (cpu_has_cpuid() == false)
+		kpanic("init_cpu(): CPU does not support CPUID");
 }
 
 x86_cpu_t *cpu_current(void)

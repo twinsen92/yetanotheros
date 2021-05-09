@@ -25,9 +25,8 @@ x86_cpu_t;
 /* Initializes the one CPU object we have. Disables interrupts. */
 void init_cpu(void);
 
+/* Gets the current CPU object. */
 x86_cpu_t *cpu_current(void);
-
-/* Various helper functions. */
 
 /* A cli that does not update CPU object */
 #define cpu_force_cli() asm volatile("cli" : : : "memory")
@@ -76,5 +75,41 @@ static inline uint32_t cpu_get_eflags()
 }
 
 #define EFLAGS_IF 0x200
+
+/* Checks whether the current CPU has the CPUID instruction. */
+static inline bool cpu_has_cpuid(void)
+{
+	uint32_t eax;
+
+	asm volatile (
+		"pushfl\n"
+		"pushfl\n"
+		"xorl $0x00200000, (%%esp)\n"
+		"popfl\n"
+		"pushfl\n"
+		"popl %%eax\n"
+		"xorl (%%esp), %%eax\n"
+		"popfl\n"
+		"andl $0x00200000, %%eax\n"
+		"movl %%eax, %0\n"
+		: "=r" (eax)
+		:
+		: "eax"
+	);
+
+	return eax > 0;
+}
+
+/* Issues the CPUID instruction. */
+static inline void cpuid (uint32_t cat, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+{
+	asm volatile (
+		"cpuid"
+		: "=a" (*eax), "=b" (*ebx), "=c" (*ecx), "=d" (*edx)
+		: "0" (cat)
+	);
+}
+
+#define CPUID_FEATURES 1
 
 #endif
