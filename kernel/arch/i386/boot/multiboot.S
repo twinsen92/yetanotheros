@@ -104,7 +104,7 @@ _start_with_paging:
 	call _init
 
 	# Initialize debug subsystem.
-	call debug_initialize
+	call init_debug
 
 	# Continue multiboot init in C code.
 	call multiboot_x86_init

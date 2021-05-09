@@ -3,6 +3,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <arch/boot_layout.h>
+#include <arch/cpu.h>
 #include <arch/vga.h>
 
 static const size_t VGA_WIDTH = 80;
@@ -22,7 +23,7 @@ static size_t strlen(const char* str)
 	return len;
 }
 
-void debug_initialize(void)
+void init_debug(void)
 {
 	terminal_row = 0;
 	terminal_column = 0;
@@ -36,6 +37,13 @@ void debug_initialize(void)
 			terminal_buffer[index] = vga_entry(' ', terminal_color);
 		}
 	}
+}
+
+static void terminal_set_panic(void)
+{
+	terminal_row = 0;
+	terminal_column = 0;
+	terminal_color = vga_entry_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
 }
 
 static void terminal_putentryat(unsigned char c, uint8_t color, size_t x, size_t y)
@@ -143,19 +151,44 @@ int kdprintf(const char* restrict format, ...)
 	return written;
 }
 
-noreturn kabort(void)
+static inline void _kpanic_begin()
 {
-	kdprintf("kernel: panic: kabort()\n");
-	asm volatile("cli":::"memory");
+	/* Stop interrupts. We're not nice with cpu.h, but at this point, who cares? This also helps
+	   in a situation where cpu.h has not been initialized yet. */
+   	cpu_force_cli();
 
+	/* Reset to 0,0 and set an intimidating red colour. */
+	terminal_set_panic();
+}
+
+static inline noreturn _kpanic_end()
+{
 	while (1)
 	{
+		cpu_relax();
 	}
+
 	__builtin_unreachable();
+}
+
+noreturn kpanic(const char *reason)
+{
+	_kpanic_begin();
+	kdprintf("kernel: panic: %s\n", reason);
+	_kpanic_end();
+}
+
+noreturn kabort(void)
+{
+	_kpanic_begin();
+	kdprintf("kernel: panic: aborted\n");
+	_kpanic_end();
 }
 
 noreturn _kassert_failed(const char *expr, const char *file, unsigned int line)
 {
+	_kpanic_begin();
 	kdprintf("%s:%d:assertion %s failed\n", file, line, expr);
-	kabort();
+	kdprintf("kernel: panic: assertion failed\n");
+	_kpanic_end();
 }

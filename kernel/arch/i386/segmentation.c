@@ -1,31 +1,30 @@
 /* segmentation.c - x86 segmentation handling code */
 
 #include <kernel/cdefs.h>
+#include <kernel/interrupts.h>
 #include <kernel/utils.h>
+#include <arch/cpu.h>
 #include <arch/gdt.h>
 #include <arch/seg_types.h>
 
-volatile tss_t cpu_tss;
-
-static seg_t _cpu_gdt[6];
-seg_t *cpu_gdt = _cpu_gdt;
-
-dtr_t cpu_gdtr = {
-	sizeof(_cpu_gdt), (vaddr32_t)_cpu_gdt
-};
-
 void init_gdt(void)
 {
+	x86_cpu_t *cpu = cpu_current();
+
+	push_no_interrupts();
+
 	/* Create the GDT. */
-	cpu_gdt[0] = gdte_construct(0, 0, 0);
-	cpu_gdt[1] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(0));
-	cpu_gdt[2] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(0));
-	cpu_gdt[3] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(3));
-	cpu_gdt[4] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(3));
-	cpu_gdt[5] = gdte_construct((uint32_t)&cpu_tss, sizeof(tss_t), GDTE_TSS_FLAGS | SEG_BIT_RING(0));
+	cpu->gdt[0] = gdte_construct(0, 0, 0);
+	cpu->gdt[1] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(0));
+	cpu->gdt[2] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(0));
+	cpu->gdt[3] = gdte_construct(0, 0xffffffff, GDTE_CODE32_FLAGS | SEG_BIT_RING(3));
+	cpu->gdt[4] = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(3));
+	cpu->gdt[5] = gdte_construct((uint32_t)&(cpu->tss), sizeof(tss_t), GDTE_TSS_FLAGS | SEG_BIT_RING(0));
 
 	/* Load the GDT. */
-	asm_ldtr(gdt, &cpu_gdtr);
+	cpu->gdtr.size = sizeof(cpu->gdt);
+	cpu->gdtr.offset = (vaddr32_t)(cpu->gdt);
+	asm_ldtr(gdt, &cpu->gdtr);
 
 	/* Jump into the kernel code segment. */
 	asm volatile ("ljmp %0, $_with_kernel_cs; _with_kernel_cs: " : : "i" (KERNEL_CODE_SELECTOR));
@@ -44,7 +43,7 @@ void init_gdt(void)
 	);
 
 	/* Let's now fill out the TSS and load it. */
-	memset_volatile(&cpu_tss, 0, sizeof(tss_t));
+	memset_volatile(&(cpu->tss), 0, sizeof(tss_t));
 
 	asm volatile (
 		"movl %0, %%ebx\n"
@@ -81,8 +80,9 @@ void init_gdt(void)
 		"ltr %%ax\n"
 		"_with_kernel_tss:"
 		:
-		: "r" (&cpu_tss), "i" (KERNEL_TSS_SELECTOR), "i" (sizeof(tss_t))
+		: "r" (&(cpu->tss)), "i" (KERNEL_TSS_SELECTOR), "i" (sizeof(tss_t))
 		: "eax", "ax", "ebx", "memory"
 	);
 
+	pop_no_interrupts();
 }

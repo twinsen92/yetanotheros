@@ -124,9 +124,7 @@ static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags
 #define USER_DATA_SELECTOR (SEG_SELECTOR(4) | RING_SELECTOR(3))
 #define USER_TSS_SELECTOR (SEG_SELECTOR(5) | RING_SELECTOR(3))
 
-extern dtr_t cpu_gdtr;
-extern seg_t *cpu_gdt;
-extern volatile tss_t cpu_tss;
+#define YAOS2_GDT_NOF_ENTRIES 6
 
 void init_gdt(void);
 
