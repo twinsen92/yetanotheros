@@ -13,11 +13,11 @@
 void init_debug(void);
 
 int kdprintf(const char* __restrict, ...);
-noreturn kpanic(const char *reason);
-noreturn kabort(void);
-noreturn _kassert_failed(const char *expr, const char *file, unsigned int line);
+noreturn _kpanic(const char *reason, const char *file, unsigned int line);
+#define kpanic(reason) _kpanic(reason, __FILE__, __LINE__);
+#define kabort() _kpanic("aborted", __FILE__, __LINE__);
 #define kassert(expr)	\
 	if (!(expr))		\
-		_kassert_failed(#expr, __FILE__, __LINE__);
+		_kpanic("assertion " #expr " failed", __FILE__, __LINE__);
 
 #endif

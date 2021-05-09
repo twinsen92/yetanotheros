@@ -15,6 +15,10 @@ static size_t terminal_column;
 static uint8_t terminal_color;
 static uint16_t* terminal_buffer;
 
+/* Utility functions */
+static const char *numcodes32 =
+		"zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz";
+
 static size_t strlen(const char* str)
 {
 	size_t len = 0;
@@ -22,6 +26,67 @@ static size_t strlen(const char* str)
 		len++;
 	return len;
 }
+
+static char *unsigned_itoa(unsigned int value, char *str, int base)
+{
+	char* ptr = str, *ptr1 = str, tmp_char;
+	unsigned int tmp_value;
+
+	do
+	{
+		tmp_value = value;
+		value /= base;
+		*ptr++ = numcodes32[35 + (tmp_value - value * base)];
+	} while (value);
+
+	*ptr-- = '\0';
+
+	while (ptr1 < ptr)
+	{
+		tmp_char = *ptr;
+		*ptr-- = *ptr1;
+		*ptr1++ = tmp_char;
+	}
+
+	return str;
+}
+
+static char *itoa(int value, char *str, int base)
+{
+	char* ptr = str, *ptr1 = str, tmp_char;
+	int tmp_value;
+
+	if (base < 2 && base > 32)
+	{
+		*str = '\0';
+		return "bad base";
+	}
+
+	if (base != 10)
+		return unsigned_itoa(value, str, base);
+
+	do
+	{
+		tmp_value = value;
+		value /= base;
+		*ptr++ = numcodes32[35 + (tmp_value - value * base)];
+	} while (value);
+
+	// Apply negative sign
+	if (tmp_value < 0)
+		*ptr++ = '-';
+	*ptr-- = '\0';
+	while (ptr1 < ptr)
+	{
+		tmp_char = *ptr;
+		*ptr-- = *ptr1;
+		*ptr1++ = tmp_char;
+	}
+
+	return str;
+}
+
+/* VGA functions */
 
 void init_debug(void)
 {
@@ -77,6 +142,8 @@ static void terminal_putchar(char c)
 	}
 }
 
+/* kernel/debug.h interface */
+
 static bool print(const char* data, size_t length)
 {
 	const unsigned char* bytes = (const unsigned char*) data;
@@ -87,10 +154,11 @@ static bool print(const char* data, size_t length)
 
 int kdprintf(const char* restrict format, ...)
 {
+	char buf[32];
 	va_list parameters;
 	va_start(parameters, format);
-
 	int written = 0;
+	size_t amount, len;
 
 	while (*format != '\0')
 	{
@@ -100,7 +168,7 @@ int kdprintf(const char* restrict format, ...)
 		{
 			if (format[0] == '%')
 				format++;
-			size_t amount = 1;
+			amount = 1;
 			while (format[amount] && format[amount] != '%')
 				amount++;
 			if (maxrem < amount)
@@ -134,13 +202,43 @@ int kdprintf(const char* restrict format, ...)
 		{
 			format++;
 			const char* str = va_arg(parameters, const char*);
-			size_t len = strlen(str);
+			len = strlen(str);
 			if (maxrem < len)
 			{
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
 			if (!print(str, len))
+				return -1;
+			written += len;
+		}
+		else if (*format == 'd')
+		{
+			format++;
+			int i = va_arg(parameters, int);
+			itoa(i, buf, 10);
+			len = strlen(buf);
+			if (maxrem < len)
+			{
+				// TODO: Set errno to EOVERFLOW.
+				return -1;
+			}
+			if (!print(buf, len))
+				return -1;
+			written += len;
+		}
+		else if (*format == 'x')
+		{
+			format++;
+			uint32_t i = va_arg(parameters, uint32_t);
+			itoa(i, buf, 16);
+			len = strlen(buf);
+			if (maxrem < len)
+			{
+				// TODO: Set errno to EOVERFLOW.
+				return -1;
+			}
+			if (!print(buf, len))
 				return -1;
 			written += len;
 		}
@@ -164,7 +262,7 @@ int kdprintf(const char* restrict format, ...)
 	return written;
 }
 
-static inline void _kpanic_begin()
+noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 {
 	/* Stop interrupts. We're not nice with cpu.h, but at this point, who cares? This also helps
 	   in a situation where cpu.h has not been initialized yet. */
@@ -172,36 +270,14 @@ static inline void _kpanic_begin()
 
 	/* Reset to 0,0 and set an intimidating red colour. */
 	terminal_set_panic();
-}
 
-static inline noreturn _kpanic_end()
-{
+	kdprintf("kernel: panic: %s\n", reason);
+	kdprintf("at %s:%d\n", file, line);
+
 	while (1)
 	{
 		cpu_relax();
 	}
 
 	__builtin_unreachable();
-}
-
-noreturn kpanic(const char *reason)
-{
-	_kpanic_begin();
-	kdprintf("kernel: panic: %s\n", reason);
-	_kpanic_end();
-}
-
-noreturn kabort(void)
-{
-	_kpanic_begin();
-	kdprintf("kernel: panic: aborted\n");
-	_kpanic_end();
-}
-
-noreturn _kassert_failed(const char *expr, const char *file, unsigned int line)
-{
-	_kpanic_begin();
-	kdprintf("%s:%d:assertion %s failed\n", file, line, expr);
-	kdprintf("kernel: panic: assertion failed\n");
-	_kpanic_end();
 }
