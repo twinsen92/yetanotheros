@@ -4,7 +4,10 @@
 
 #include <kernel/cdefs.h>
 #include <arch/gdt.h>
+#include <arch/idt.h>
+#include <arch/interrupts.h>
 #include <arch/seg_types.h>
+#include <arch/selectors.h>
 
 #define X86_CPU_MAGIC 0x86
 
@@ -15,6 +18,7 @@ typedef struct
 	/* Interrupts */
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
 	int cli_stack; /* Number of cli push operations. */
+	isr_frame_t *isr_frame;
 	/* Segmentation */
 	dtr_t gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
@@ -24,6 +28,11 @@ x86_cpu_t;
 
 /* Initializes the one CPU object we have. Disables interrupts. */
 void init_cpu(void);
+
+int get_nof_cpus(void);
+
+/* Gets the current CPU object or NULL if un-initialized. */
+x86_cpu_t *cpu_current_or_null(void);
 
 /* Gets the current CPU object. */
 x86_cpu_t *cpu_current(void);

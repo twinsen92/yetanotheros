@@ -7,20 +7,16 @@
 
 typedef struct
 {
-	uint16_t link;
-	uint16_t _p0;
+	uint16_t link, :16;
 
 	uint32_t esp0;
-	uint16_t ss0;
-	uint16_t _p1;
+	uint16_t ss0, :16;
 
 	uint32_t esp1;
-	uint16_t ss1;
-	uint16_t _p2;
+	uint16_t ss1, :16;
 
 	uint32_t esp2;
-	uint16_t ss2;
-	uint16_t _p3;
+	uint16_t ss2, :16;
 
 	uint32_t cr3;
 	uint32_t eip;
@@ -34,26 +30,13 @@ typedef struct
 	uint32_t esi;
 	uint32_t edi;
 
-	uint16_t es;
-	uint16_t _p4;
-
-	uint16_t cs;
-	uint16_t _p5;
-
-	uint16_t ss;
-	uint16_t _p6;
-
-	uint16_t ds;
-	uint16_t _p7;
-
-	uint16_t fs;
-	uint16_t _p8;
-
-	uint16_t gs;
-	uint16_t _p9;
-
-	uint16_t ldtr;
-	uint16_t _p10;
+	uint16_t es, :16;
+	uint16_t cs, :16;
+	uint16_t ss, :16;
+	uint16_t ds, :16;
+	uint16_t fs, :16;
+	uint16_t gs, :16;
+	uint16_t ldtr, :16;
 
 	uint16_t debug_trap;
 	uint16_t iopb;
@@ -108,23 +91,9 @@ static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags
 	return seg;
 }
 
-/* Segment selector macros */
-
-#define SEG_SELECTOR(idx) (idx * sizeof(seg_t))
-#define RING_SELECTOR(r) (r)
-#define LDT_SELECTOR 0x0004
-#define seg_selector_to_index(sel) ((sel & 0x07) / sizeof(seg_t))
+#define seg_selector_to_index(sel) ((sel & ~0x07) / sizeof(seg_t))
 
 /* YAOS2 specific stuff */
-
-#define KERNEL_CODE_SELECTOR (SEG_SELECTOR(1) | RING_SELECTOR(0))
-#define KERNEL_DATA_SELECTOR (SEG_SELECTOR(2) | RING_SELECTOR(0))
-#define KERNEL_TSS_SELECTOR (SEG_SELECTOR(5) | RING_SELECTOR(0))
-#define USER_CODE_SELECTOR (SEG_SELECTOR(3) | RING_SELECTOR(3))
-#define USER_DATA_SELECTOR (SEG_SELECTOR(4) | RING_SELECTOR(3))
-#define USER_TSS_SELECTOR (SEG_SELECTOR(5) | RING_SELECTOR(3))
-
-#define YAOS2_GDT_NOF_ENTRIES 6
 
 void init_gdt(void);
 

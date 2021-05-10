@@ -158,7 +158,6 @@ int kdprintf(const char* restrict format, ...)
 	va_list parameters;
 	va_start(parameters, format);
 	int written = 0;
-	size_t amount, len;
 
 	while (*format != '\0')
 	{
@@ -168,7 +167,7 @@ int kdprintf(const char* restrict format, ...)
 		{
 			if (format[0] == '%')
 				format++;
-			amount = 1;
+			size_t amount = 1;
 			while (format[amount] && format[amount] != '%')
 				amount++;
 			if (maxrem < amount)
@@ -202,7 +201,7 @@ int kdprintf(const char* restrict format, ...)
 		{
 			format++;
 			const char* str = va_arg(parameters, const char*);
-			len = strlen(str);
+			size_t len = strlen(str);
 			if (maxrem < len)
 			{
 				// TODO: Set errno to EOVERFLOW.
@@ -216,29 +215,66 @@ int kdprintf(const char* restrict format, ...)
 		{
 			format++;
 			int i = va_arg(parameters, int);
-			itoa(i, buf, 10);
-			len = strlen(buf);
+			char *str = itoa(i, buf, 10);
+			size_t len = strlen(str);
 			if (maxrem < len)
 			{
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(buf, len))
+			if (!print(str, len))
+				return -1;
+			written += len;
+		}
+		else if (*format == 'u')
+		{
+			format++;
+			unsigned int i = va_arg(parameters, unsigned int);
+			char *str = unsigned_itoa(i, buf, 10);
+			size_t len = strlen(str);
+			if (maxrem < len)
+			{
+				// TODO: Set errno to EOVERFLOW.
+				return -1;
+			}
+			if (!print(str, len))
 				return -1;
 			written += len;
 		}
 		else if (*format == 'x')
 		{
 			format++;
-			uint32_t i = va_arg(parameters, uint32_t);
-			itoa(i, buf, 16);
-			len = strlen(buf);
+			unsigned int i = va_arg(parameters, unsigned int);
+			/* TODO: What about uint64_t? */
+			char *str = unsigned_itoa(i, buf, 10);
+			size_t len = strlen(str);
 			if (maxrem < len)
 			{
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(buf, len))
+			if (!print(str, len))
+				return -1;
+			written += len;
+		}
+		else if (*format == 'p')
+		{
+			format++;
+			vaddr_t p = va_arg(parameters, vaddr_t);
+			/* TODO: This won't work in 64-bit mode. */
+			kassert(sizeof(unsigned int) == sizeof(vaddr_t));
+			char *str = unsigned_itoa((unsigned int)p, buf, 16);
+			size_t len = strlen(str);
+			int zeroes = sizeof(vaddr_t) * 2 - len;
+			if (maxrem < len + zeroes)
+			{
+				// TODO: Set errno to EOVERFLOW.
+				return -1;
+			}
+			for (int i = 0; i < zeroes; i++)
+				if (!print("0", 1))
+					return -1;
+			if (!print(str, len))
 				return -1;
 			written += len;
 		}
@@ -264,6 +300,8 @@ int kdprintf(const char* restrict format, ...)
 
 noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 {
+	x86_cpu_t *cpu;
+
 	/* Stop interrupts. We're not nice with cpu.h, but at this point, who cares? This also helps
 	   in a situation where cpu.h has not been initialized yet. */
    	cpu_force_cli();
@@ -273,6 +311,17 @@ noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 
 	kdprintf("kernel: panic: %s\n", reason);
 	kdprintf("at %s:%d\n", file, line);
+
+	/* See if we can print additional info. */
+	cpu = cpu_current_or_null();
+
+	if (cpu != NULL && cpu->isr_frame != NULL)
+	{
+		kdprintf("in interrupt %x", cpu->isr_frame->int_no);
+		kdprintf("error_code=%x\n", cpu->isr_frame->error_code);
+		kdprintf("EIP=%p, CS=%x, EFLAGS=%x\n", cpu->isr_frame->eip, cpu->isr_frame->cs, cpu->isr_frame->eflags);
+		kdprintf("ESP=%p, SS=%x\n", cpu->isr_frame->esp, cpu->isr_frame->ss);
+	}
 
 	while (1)
 	{

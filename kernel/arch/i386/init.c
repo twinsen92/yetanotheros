@@ -3,10 +3,15 @@
 #include <kernel/init.h>
 #include <arch/cpu.h>
 #include <arch/gdt.h>
+#include <arch/idt.h>
+#include <arch/interrupts.h>
 
 noreturn generic_x86_init(void)
 {
 	init_cpu();
 	init_gdt();
+	init_idt();
+	init_isr();
+	load_idt();
 	kernel_main();
 }
