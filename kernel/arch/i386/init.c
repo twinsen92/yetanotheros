@@ -4,6 +4,7 @@
 #include <arch/cpu.h>
 #include <arch/gdt.h>
 #include <arch/idt.h>
+#include <arch/init.h>
 #include <arch/interrupts.h>
 
 noreturn generic_x86_init(void)
@@ -13,5 +14,6 @@ noreturn generic_x86_init(void)
 	init_idt();
 	init_isr();
 	load_idt();
+	yaos2_initialized = 1;
 	kernel_main();
 }

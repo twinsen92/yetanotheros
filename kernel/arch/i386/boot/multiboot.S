@@ -39,6 +39,10 @@ __boot_kernel_pd:
 __boot_zero_pt:
 	.fill 1024, 4, 0
 
+.global yaos2_initialized
+yaos2_initialized:
+	.long 0
+
 .section .bss
 	# Reserve a stack for the initial thread.
 	.align 16

@@ -166,7 +166,7 @@ vm_region_t;
 	/* Dynamic kernel memory region. */															\
 	map[4] = (vm_region_t) {																	\
 		KM_VIRT_END,																			\
-		NULL,																					\
+		PHYS_NULL,																				\
 		KM_DEV_VIRT_BASE - KM_VIRT_END,															\
 		false,																					\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
@@ -179,6 +179,10 @@ vm_region_t;
 
 #define VM_KERNEL_EXEC_RO_REGION 1
 #define VM_KERNEL_EXEC_RW_REGION 2
+
+/* Other regions */
+
+#define VM_PALLOC_REGION 3
 
 /* The map itself, defined in early_paging.c */
 extern const vm_region_t *vm_map;

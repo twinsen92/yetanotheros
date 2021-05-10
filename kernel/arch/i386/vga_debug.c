@@ -246,7 +246,7 @@ int kdprintf(const char* restrict format, ...)
 			format++;
 			unsigned int i = va_arg(parameters, unsigned int);
 			/* TODO: What about uint64_t? */
-			char *str = unsigned_itoa(i, buf, 10);
+			char *str = unsigned_itoa(i, buf, 16);
 			size_t len = strlen(str);
 			if (maxrem < len)
 			{

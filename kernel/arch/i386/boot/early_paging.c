@@ -58,7 +58,7 @@ static void map(vaddr_t v, paddr_t p, uint32_t flags, bool early)
 	pde = new_kernel_pd + pdi;
 	pde = enable(pde, early);
 
-	if (pde_get_paddr(*pde) == NULL)
+	if (pde_get_paddr(*pde) == PHYS_NULL)
 	{
 		ptp = km_paddr(new_kernel_page_tables + (pdi * PT_LENGTH));
 		*pde = pde_construct(ptp, flags | PAGE_BIT_PRESENT);

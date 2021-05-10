@@ -1,6 +1,7 @@
 /* idt.c - x86 IDT handler code */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
+#include <kernel/init.h>
 #include <arch/idt.h>
 #include <arch/interrupts.h>
 #include <arch/seg_types.h>
@@ -12,6 +13,8 @@ static dtr_t idtr = { sizeof(idt), (uint32_t)&idt };
 
 void init_idt(void)
 {
+	kassert(is_yaos2_initialized() == false);
+
 	/* We assume 32-bit here... */
 	kassert(sizeof(vaddr_t) == sizeof(uint32_t));
 

@@ -1,6 +1,7 @@
 /* interrupts.c - holder of interrupt handlers table */
 #include <kernel/addr.h>
 #include <kernel/debug.h>
+#include <kernel/init.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 
@@ -29,6 +30,8 @@ void generic_interrupt_handler(isr_frame_t *frame)
 /* Initializes the ISR registry. */
 void init_isr(void)
 {
+	kassert(is_yaos2_initialized() == false);
+
 	for (int i = 0; i < ISR_MAX; i++)
 		handlers[i] = NULL;
 }
