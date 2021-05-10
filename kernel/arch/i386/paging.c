@@ -1,6 +1,6 @@
 /* paging.c - memory paging subsystem */
 
-#include <arch/boot_layout.h>
+#include <arch/memlayout.h>
 #include <arch/paging.h>
 
 pde_t *const current_pd = (pde_t *const) 0xfffff000;

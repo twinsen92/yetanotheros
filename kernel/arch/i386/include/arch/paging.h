@@ -2,8 +2,9 @@
 #ifndef ARCH_I386_PAGING_H
 #define ARCH_I386_PAGING_H
 
+#include <kernel/addr.h>
 #include <kernel/cdefs.h>
-
+#include <arch/memlayout.h>
 #include <arch/paging_types.h>
 
 /* We want to keep the paging structures of the currently used page directory and the base kernel
@@ -43,6 +44,5 @@ extern pte_t *const kernel_page_tables;
 
 #define asm_set_cr3(v) asm volatile ("movl %0, %%cr3" : : "r" ((v)) : "memory")
 #define asm_invlpg(v) asm volatile ("invlpg (%0)" : : "r" ((v)) : "memory")
-
 
 #endif

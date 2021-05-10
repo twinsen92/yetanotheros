@@ -1,6 +1,9 @@
 /* multiboot.S - x86 boot code. This file contains _start, which is the first procedure the bootloader
    calls. */
 
+#include <arch/memlayout.h>
+#include <arch/paging_types.h>
+
 # Declare constants for the multiboot header.
 .set ALIGN,    1<<0             # align loaded modules on page boundaries
 .set MEMINFO,  1<<1             # provide memory map
@@ -17,16 +20,11 @@
 	# Reserve room for the rest of the multiboot header.
 	.skip 8180
 
-.set KERNEL_BASE_VADDR, 0xC0000000
-.set PAGE_PRESENT_BIT, 1
-.set PAGE_RW_BIT, 2
-.set PAGE_FLAGS, PAGE_RW_BIT | PAGE_PRESENT_BIT
-
 .data
 	.align 4096
 
-	.set KERNEL_PD_SELF_ENTRY, (__boot_kernel_pd - KERNEL_BASE_VADDR + PAGE_FLAGS)
-	.set ZERO_ADDR_ENTRY, (__boot_zero_pt - KERNEL_BASE_VADDR + PAGE_FLAGS)
+#define KERNEL_PD_SELF_ENTRY (__boot_kernel_pd - ASM_KM_VIRT_BASE + PAGE_RW_PRESENT)
+#define ZERO_ADDR_ENTRY (__boot_zero_pt - ASM_KM_VIRT_BASE + PAGE_RW_PRESENT)
 
 __boot_kernel_pd:
 	# 0x0 -> 0x0, 4 MiBs, RW, present
@@ -52,12 +50,12 @@ __boot_stack_bottom:
 
 # The kernel entry point.
 .section .text
-	#.set _start, (__start - KERNEL_BASE_VADDR)
+	#.set _start, (__start - ASM_KM_VIRT_BASE)
 	.global _start
 	.type _start, @function
 _start:
 	movl $0x00000003, %ecx
-	leal (__boot_zero_pt - KERNEL_BASE_VADDR), %edx
+	leal (__boot_zero_pt - ASM_KM_VIRT_BASE), %edx
 	movl %ecx, (%edx)
 1:
 	addl $0x00001000, %ecx
@@ -67,7 +65,7 @@ _start:
 	jne 1b
 
 	# Set the page directory
-	leal (__boot_kernel_pd - KERNEL_BASE_VADDR), %ecx
+	leal (__boot_kernel_pd - ASM_KM_VIRT_BASE), %ecx
 	movl %ecx, %cr3
 
 	# Set the paging bit
@@ -94,7 +92,7 @@ _start_with_paging:
 	pushl %eax
 
 	# Move multiboot information pointer to virtual space and push it.
-	addl $KERNEL_BASE_VADDR, %ebx
+	addl $ASM_KM_VIRT_BASE, %ebx
 	pushl %ebx
 
 	# Set up proper paging tables.

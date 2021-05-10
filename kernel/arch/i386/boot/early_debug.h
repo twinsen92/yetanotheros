@@ -7,7 +7,7 @@
 noreturn early_kassert_failed(void);
 
 #define early_kassert(expr)		\
-	if (!expr)					\
+	if (!(expr))					\
 		early_kassert_failed()
 
 #endif
