@@ -127,6 +127,6 @@ void pfree(paddr_t p)
 vaddr_t ptranslate(paddr_t p)
 {
 	if (!is_mappable(p))
-		return VIRT_NULL;
+		return NULL;
 	return vm_region->vbase + (p - vm_region->pbase);
 }

@@ -4,15 +4,14 @@
 #include <kernel/debug.h>
 #include <kernel/utils.h>
 #include <arch/apic.h>
+#include <arch/cpu.h>
 #include <arch/mpt.h>
 #include <arch/mpt_types.h>
 
-#define LAPIC_DEFAULT_BASE   ((paddr_t)0xfee00000)
-
 static mpt_info_t info = {
-	LAPIC_DEFAULT_BASE
+	NULL
 };
-
+static mpt_info_t *info_ptr = NULL;
 static uint8_t ioapic_offset = 0;
 const char *pci_pin = "abcd";
 
@@ -21,8 +20,8 @@ static int visit_entry(const uint8_t *addr)
 	const struct mp_conf_proc *proc = (const struct mp_conf_proc *)addr;
 	const struct mp_conf_bus *bus = (const struct mp_conf_bus *)addr;
 	const struct mp_conf_ioapic *ioapic = (const struct mp_conf_ioapic *)addr;
-	const struct mp_conf_ioint *ioint = (const struct mp_conf_ioint *)addr;
-	const struct mp_conf_lint *lint = (const struct mp_conf_lint *)addr;
+	__unused const struct mp_conf_ioint *ioint = (const struct mp_conf_ioint *)addr;
+	__unused const struct mp_conf_lint *lint = (const struct mp_conf_lint *)addr;
 	uint8_t type = *addr;
 	char str[16];
 
@@ -33,6 +32,7 @@ static int visit_entry(const uint8_t *addr)
 	case MP_CONF_PROC:
 		kdprintf("MP proc: id=%d, ver=%d, flags=%x, sig=%x, features=%x\n",
 			proc->lapic_id, proc->lapic_ver, proc->cpu_flags, proc->cpu_signature, proc->features);
+		cpu_add(proc->lapic_id);
 		return sizeof(struct mp_conf_proc);
 	case MP_CONF_BUS:
 		/* TODO: Use this information to configure IO APICs. */
@@ -82,8 +82,8 @@ static void parse_mp_conf(const struct mp_conf_header *header)
 	const uint8_t *ptr;
 	int entry;
 
-	info.lapic_addr = (paddr_t) header->lapic_addr;
-	kdprintf("MP LAPIC addr=%x\n", header->lapic_addr);
+	info.lapic_base = vm_map_walk(header->lapic_addr, true);
+	kdprintf("MP LAPIC phys=%x\n", header->lapic_addr);
 	ptr = (const uint8_t *)(header) + sizeof(struct mp_conf_header);
 
 	for (entry = 0; entry < header->entry_count; entry++)
@@ -101,6 +101,7 @@ static bool scan_range(vaddr_t start, vaddr_t end)
 		if (kstrncmp(fps->signature, MP_FPS_SIGNATURE, sizeof(fps->signature)))
 		{
 			parse_mp_conf(km_vaddr(fps->mp_conf_addr));
+			info_ptr = &info;
 			return true;
 		}
 	}
@@ -128,5 +129,5 @@ bool mpt_scan(void)
 /* Gets the pointer to the parsed MP table info. */
 const mpt_info_t *mpt_get_info(void)
 {
-	return &info;
+	return info_ptr;
 }

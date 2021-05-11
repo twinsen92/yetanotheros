@@ -4,11 +4,17 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <arch/apic_types.h>
 
 /* Local APIC */
 
 /* Initializes the local APIC of the current CPU. */
 void init_lapic(void);
+
+/* Get the current LAPIC ID. Can be used regardless of init_lapic() */
+lapic_id_t lapic_get_id(void);
+
+void lapic_eoi(void);
 
 /* I/O APIC */
 

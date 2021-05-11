@@ -4,10 +4,11 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <arch/mpt_types.h>
 
 typedef struct
 {
-	paddr_t lapic_addr;
+	vaddr_t lapic_base;
 } mpt_info_t;
 
 /* Scans the physical memory for the MP tables. Returns true if found. */

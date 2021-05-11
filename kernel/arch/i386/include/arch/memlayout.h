@@ -196,6 +196,18 @@ vm_region_t;
 /* The map itself, defined in early_paging.c */
 extern const vm_region_t *vm_map;
 
+/*
+	Walks the virtual memory map.
+
+	If the physical address is statically mapped to a virtual address, the latter is returned.
+	Otherwise, NULL is returned. In general, that means a page walk should be performed.
+
+	Additionally, if panic flag is true, the function panics instead of returning NULL.
+
+	TODO: Make sure this is used in more places.
+*/
+vaddr_t vm_map_walk(paddr_t p, bool panic);
+
 #endif
 
 #endif

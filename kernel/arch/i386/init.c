@@ -13,15 +13,21 @@
 
 noreturn generic_x86_init(void)
 {
-	init_cpu();
+	if (!mpt_scan())
+		kpanic("Did not find MP tables!");
+
+	/* Set current CPU as active. We're using it right now! */
+	cpu_current()->active = true;
+
 	init_gdt();
 	init_idt();
 	init_isr();
 	pic_disable();
-	if (!mpt_scan())
-		kpanic("Did not find MP tables!");
 	init_lapic();
 	load_idt();
+
+	//cpu_set_interrupts(true);
+
 	yaos2_initialized = 1;
 	kernel_main();
 }

@@ -3,6 +3,7 @@
 #define ARCH_I386_CPU_H
 
 #include <kernel/cdefs.h>
+#include <arch/apic_types.h>
 #include <arch/gdt.h>
 #include <arch/idt.h>
 #include <arch/interrupts.h>
@@ -13,8 +14,10 @@
 
 typedef struct
 {
-	int num;
 	int magic;
+	int num;
+	atomic_bool active;
+	lapic_id_t lapic_id;
 	/* Interrupts */
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
 	int cli_stack; /* Number of cli push operations. */
@@ -26,8 +29,8 @@ typedef struct
 }
 x86_cpu_t;
 
-/* Initializes the one CPU object we have. Disables interrupts. */
-void init_cpu(void);
+/* Adds a CPU. */
+void cpu_add(lapic_id_t lapic_id);
 
 /* Get the number of CPUs. */
 int get_nof_cpus(void);
