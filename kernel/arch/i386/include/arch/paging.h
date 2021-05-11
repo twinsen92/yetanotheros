@@ -46,6 +46,11 @@ extern pte_t *const kernel_page_tables;
 #define asm_invlpg(v) asm volatile ("invlpg (%0)" : : "r" ((v)) : "memory")
 
 /* Returns true if CR3 currently contains the kernel page directory. */
-bool is_using_kernel_page_tables(void);
+static inline bool is_using_kernel_page_tables(void)
+{
+	paddr_t pd;
+	asm volatile ("movl %%cr3, %0" : "=r" (pd));
+	return pd == km_paddr(kernel_pd);
+}
 
 #endif
