@@ -9,6 +9,7 @@
 #define ASM_KM_EXEC_VIRT_BASE	(ASM_KM_VIRT_BASE + ASM_KM_EXEC_PHYS_BASE)
 /* Memory region where devices and the current paging structures will be mapped. */
 #define ASM_KM_DEV_VIRT_BASE	0xFE000000
+#define ASM_KM_DEV_VIRT_END		0xFFC00000
 
 #ifndef __ASSEMBLER__
 
@@ -21,6 +22,7 @@
 #define KM_EXEC_PHYS_BASE	((paddr_t)(ASM_KM_EXEC_PHYS_BASE))
 #define KM_EXEC_VIRT_BASE	((vaddr_t)(ASM_KM_EXEC_VIRT_BASE))
 #define KM_DEV_VIRT_BASE	((vaddr_t)(ASM_KM_DEV_VIRT_BASE))
+#define KM_DEV_VIRT_END		((vaddr_t)(ASM_KM_DEV_VIRT_END))
 
 /* Linker symbols. */
 extern symbol_t __kernel_virtual_offset;
@@ -92,13 +94,13 @@ extern symbol_t __kernel_page_tables;
 		etc. This area should be mapped as "global". The map of the dynamic area should be
 		propagated to other paging structures, somehow...
 
-						KM_DEV_VIRT_BASE
-						...
-						0xffc00000
+						KM_DEV_VIRT_BASE				KM_DEV_VIRT_BASE
+						...								...
+						KM_DEV_VIRT_END					KM_DEV_VIRT_END
 
 			Memory mapped devices will be mapped in this region.
 
-						0xffc00000
+						KM_DEV_VIRT_END
 						...
 						0xffffffff
 
@@ -170,9 +172,17 @@ vm_region_t;
 		false,																					\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
+	/* Memory mapped devices region. */															\
+	map[5] = (vm_region_t) {																	\
+		KM_DEV_VIRT_BASE,																		\
+		(paddr_t)KM_DEV_VIRT_BASE,																\
+		KM_DEV_VIRT_END - KM_DEV_VIRT_BASE,														\
+		true,																					\
+		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
+	};																							\
 }
 
-#define VM_NOF_REGIONS 5
+#define VM_NOF_REGIONS 6
 
 /* Executable region indices, used by early_paging.c to initially map the kernel */
 
