@@ -8,6 +8,7 @@
 /* TODO: Protect with an R/W lock. */
 static void (*handlers[ISR_MAX])(isr_frame_t*);
 
+/* Generic interrupt handler routine. */
 void generic_interrupt_handler(isr_frame_t *frame)
 {
 	x86_cpu_t *cpu;

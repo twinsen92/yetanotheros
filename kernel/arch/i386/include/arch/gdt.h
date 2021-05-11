@@ -95,6 +95,7 @@ static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags
 
 /* YAOS2 specific stuff */
 
+/* Initializes the GDT for the current CPU. */
 void init_gdt(void);
 
 #endif

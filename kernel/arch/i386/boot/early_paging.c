@@ -34,6 +34,7 @@ static void *late_enable(void *v)
 	return v;
 }
 
+/* Calls appropriate enabler based on early flag. */
 static void *enable(void *v, bool early)
 {
 	if (early)
@@ -42,6 +43,8 @@ static void *enable(void *v, bool early)
 		return late_enable(v);
 }
 
+/* Maps exactly one page at physical memory 'p' to virutal memory 'v' with given flags. The mapping
+   is done on base kernel page structures. */
 static void map(vaddr_t v, paddr_t p, uint32_t flags, bool early)
 {
 	int pdi, pti;
@@ -75,6 +78,8 @@ static void map(vaddr_t v, paddr_t p, uint32_t flags, bool early)
 	*pte = pte_construct(p, flags | PAGE_BIT_PRESENT);
 }
 
+/* Maps a region of physical memory starting from pfrom to pto, at vfrom, with given flags.
+   The mapping is done on base kernel page structures. */
 static void map_region(vaddr_t vfrom, paddr_t pfrom, paddr_t pto, uint32_t flags, bool early)
 {
 	while (pfrom < pto)
@@ -85,11 +90,15 @@ static void map_region(vaddr_t vfrom, paddr_t pfrom, paddr_t pto, uint32_t flags
 	}
 }
 
+/* Maps a region of physical memory based on a vm_region_t object.  The mapping is done on base
+   kernel page structures. */
 static void map_region_object(const vm_region_t *region, bool early)
 {
 	map_region(region->vbase, region->pbase, region->pbase + region->size, region->flags, early);
 }
 
+/* Adds a self-reference to the kernel page directory at a the kernel page directory entry pdi,
+   with given flags. */
 static void add_self_ref(int pdi, uint32_t flags, bool early)
 {
 	pde_t *pde;
@@ -100,6 +109,7 @@ static void add_self_ref(int pdi, uint32_t flags, bool early)
 	*pde = pde_construct(km_paddr(new_kernel_pd), flags | PAGE_BIT_RW | PAGE_BIT_PRESENT);
 }
 
+/* Boot-time kernel paging structures initialization. */
 void early_init_kernel_paging(void)
 {
 	/* We initialize the static variables here because _init() will not have been called yet. */

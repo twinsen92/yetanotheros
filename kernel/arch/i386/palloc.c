@@ -27,12 +27,15 @@ static inline bool is_mappable(paddr_t p)
 	return (vm_region->pbase <= p) && (p < vm_region->pbase + vm_region->size);
 }
 
+/* Translates a virtual address to physical address. This assumes the address is within palloc's
+   virtual memory region. */
 static inline paddr_t vtranslate(vaddr_t v)
 {
 	kassert((vm_region->vbase <= v) && (v < vm_region->vbase + vm_region->size));
 	return vm_region->pbase + (((uintptr_t)v) - ((uintptr_t)vm_region->vbase));
 }
 
+/* Initializes the physical memory allocator. This can be called multiple times. */
 void init_palloc(void)
 {
 	if (initialized)
@@ -45,6 +48,7 @@ void init_palloc(void)
 	initialized = true;
 }
 
+/* Add a memory region to palloc. */
 void palloc_add_free_region(paddr_t from, paddr_t to)
 {
 	kassert(is_yaos2_initialized() == false);
@@ -67,11 +71,13 @@ void palloc_add_free_region(paddr_t from, paddr_t to)
 	}
 }
 
+/* Get the size of the page returned by palloc() */
 uint32_t palloc_get_granularity(void)
 {
 	return PAGE_SIZE;
 }
 
+/* Get the next free physical memory page or PHYS_NULL if none are available. */
 paddr_t palloc(void)
 {
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
@@ -94,6 +100,7 @@ paddr_t palloc(void)
 	return vtranslate(page);
 }
 
+/* Free the given physical memory page. */
 void pfree(paddr_t p)
 {
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
@@ -114,6 +121,9 @@ void pfree(paddr_t p)
 	first_free_page = page;
 }
 
+/* Translate physical address to virtual address.
+   NOTE: This does not walk the page tables. This function assumes it has been called with kernel
+   page tables in CR3, and does a light-weight calculation based on palloc's virtual mem region. */
 vaddr_t ptranslate(paddr_t p)
 {
 	if (!is_mappable(p))

@@ -29,6 +29,7 @@ x86_cpu_t;
 /* Initializes the one CPU object we have. Disables interrupts. */
 void init_cpu(void);
 
+/* Get the number of CPUs. */
 int get_nof_cpus(void);
 
 /* Gets the current CPU object or NULL if un-initialized. */

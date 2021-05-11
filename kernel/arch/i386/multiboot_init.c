@@ -15,6 +15,7 @@ static const char *mb_mmap_type_texts[] = {
 	"badram"
 };
 
+/* Walks the Multiboot memory map structures and calls palloc_add_free_region() */
 static void walk_mmap(struct multiboot_info *info)
 {
 	const char *text;

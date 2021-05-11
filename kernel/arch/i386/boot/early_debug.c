@@ -6,7 +6,7 @@
 
 static uint16_t* const VGA_MEMORY = (uint16_t*) 0xB8000;
 
-noreturn early_kassert_failed(void)
+noreturn _early_kassert_failed(void)
 {
 	asm volatile("cli":::"memory");
 

@@ -13,7 +13,7 @@
 
 # Declare a header as in the Multiboot Standard.
 .section .multiboot
-	.align 4096
+.align 4096
 	.long MAGIC
 	.long FLAGS
 	.long CHECKSUM
@@ -21,7 +21,7 @@
 	.skip 8180
 
 .data
-	.align 4096
+.align 4096
 
 #define KERNEL_PD_SELF_ENTRY (__boot_kernel_pd - ASM_KM_VIRT_BASE + PAGE_RW_PRESENT)
 #define ZERO_ADDR_ENTRY (__boot_zero_pt - ASM_KM_VIRT_BASE + PAGE_RW_PRESENT)
@@ -43,20 +43,19 @@ __boot_zero_pt:
 yaos2_initialized:
 	.long 0
 
+# Reserve a stack for the initial thread.
 .section .bss
-	# Reserve a stack for the initial thread.
-	.align 16
-	.global __boot_stack_top
+.align 16
+.global __boot_stack_top
 __boot_stack_top:
 	.skip 16384 # 16 KiB
-	.global __boot_stack_bottom
+.global __boot_stack_bottom
 __boot_stack_bottom:
 
 # The kernel entry point.
 .section .text
-	#.set _start, (__start - ASM_KM_VIRT_BASE)
-	.global _start
-	.type _start, @function
+.global _start
+.type _start, @function
 _start:
 	movl $0x00000003, %ecx
 	leal (__boot_zero_pt - ASM_KM_VIRT_BASE), %edx
@@ -116,4 +115,5 @@ _start_with_paging:
 2:
 	hlt
 	jmp 2b
-	.size _start, . - _start
+
+.size _start, . - _start

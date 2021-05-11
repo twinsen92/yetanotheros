@@ -22,7 +22,7 @@ void pfree(paddr_t p);
 
 /* Translate physical address to virtual address.
    NOTE: This does not walk the page tables. This function assumes it has been called with kernel
-   page tables in CR3, and does a light-weight calculation. */
+   page tables in CR3, and does a light-weight calculation based on palloc's virtual mem region. */
 vaddr_t ptranslate(paddr_t p);
 
 #endif

@@ -21,6 +21,7 @@ typedef uint64_t seg_t;
 #define SEG_BIT_RING(r) ((r) << 13) /* Ring macro. */
 #define SEG_BIT_PRESENT 0x8000 /* Segment is present and usable. */
 
+/* Loads a register of given type. */
 #define asm_ldtr(type, ptr) asm volatile ("l" type " (%0)" : : "r" (ptr) : "memory")
 
 #endif

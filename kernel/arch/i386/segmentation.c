@@ -8,6 +8,7 @@
 #include <arch/seg_types.h>
 #include <arch/selectors.h>
 
+/* Initializes the GDT for the current CPU. */
 void init_gdt(void)
 {
 	x86_cpu_t *cpu = cpu_current();

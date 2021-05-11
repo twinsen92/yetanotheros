@@ -4,10 +4,10 @@
 
 #include <kernel/cdefs.h>
 
-noreturn early_kassert_failed(void);
+noreturn _early_kassert_failed(void);
 
 #define early_kassert(expr)		\
 	if (!(expr))					\
-		early_kassert_failed()
+		_early_kassert_failed()
 
 #endif

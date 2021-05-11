@@ -6,6 +6,7 @@
 /* We only have one cpu right now. */
 static x86_cpu_t cpu;
 
+/* Initializes the one CPU object we have. Disables interrupts. */
 void init_cpu(void)
 {
 	cpu.num = 0;
@@ -19,11 +20,13 @@ void init_cpu(void)
 		kpanic("init_cpu(): CPU does not support CPUID");
 }
 
+/* Get the number of CPUs. */
 int get_nof_cpus(void)
 {
 	return 1;
 }
 
+/* Gets the current CPU object or NULL if un-initialized. */
 x86_cpu_t *cpu_current_or_null(void)
 {
 	if (cpu.magic != X86_CPU_MAGIC)
@@ -31,6 +34,7 @@ x86_cpu_t *cpu_current_or_null(void)
 	return &cpu;
 }
 
+/* Gets the current CPU object. */
 x86_cpu_t *cpu_current(void)
 {
 	/* Check if the cpu has been initialized. */
