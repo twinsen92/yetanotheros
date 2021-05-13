@@ -1,4 +1,4 @@
-
+/* spinlock.c - x86 spinlock implementation */
 #include <kernel/debug.h>
 #include <kernel/interrupts.h>
 #include <kernel/spinlock.h>
@@ -20,11 +20,13 @@ void spinlock_create(spinlock_t *spinlock, const char *name)
 {
 	spinlock->locked = 0;
 	spinlock->name = name;
-	spinlock->cpu = -1;
+	spinlock->cpu = SPINLOCK_INVALID_CPU;
 }
 
 void spinlock_acquire(spinlock_t *spinlock)
 {
+	x86_cpu_t *cpu;
+
 	push_no_interrupts();
 
 	while (asm_xchg(&(spinlock->locked), 1))
@@ -32,15 +34,25 @@ void spinlock_acquire(spinlock_t *spinlock)
 
 	asm_barrier();
 
-	spinlock->cpu = cpu_current()->num;
+	cpu = cpu_current_or_null();
+
+	if (cpu)
+		spinlock->cpu = cpu->num;
+	else
+		spinlock->cpu = SPINLOCK_UNKNOWN_CPU;
 }
 
 void spinlock_release(spinlock_t *spinlock)
 {
-	if(!spinlock_held(spinlock))
+	if (spinlock->cpu == SPINLOCK_INVALID_CPU)
 		kpanic("spinlock_release(): called on an unheld spinlock");
 
-	spinlock->cpu = -1;
+	/* We only check if we hold the lock if the holding CPU is a known one. This avoids issues in
+	   early kernel, where we might have not enumerated CPUs yet. */
+	if (spinlock->cpu != SPINLOCK_UNKNOWN_CPU && !spinlock_held(spinlock))
+		kpanic("spinlock_release(): called on an unheld spinlock");
+
+	spinlock->cpu = SPINLOCK_INVALID_CPU;
 
 	asm_barrier();
 

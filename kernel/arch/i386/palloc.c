@@ -3,6 +3,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
+#include <kernel/spinlock.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
 #include <arch/palloc.h>
@@ -16,8 +17,8 @@ typedef struct _page_t
 	struct _page_t *next;
 } page_t;
 
-/* TODO: Protect with a lock. */
 static bool initialized = false;
+static spinlock_t spinlock;
 static page_t *first_free_page;
 static const vm_region_t *vm_region;
 
@@ -45,6 +46,7 @@ void init_palloc(void)
 
 	first_free_page = NULL;
 	vm_region = vm_map + VM_PALLOC_REGION;
+	spinlock_create(&spinlock, "palloc");
 	initialized = true;
 }
 
@@ -80,6 +82,10 @@ uint32_t palloc_get_granularity(void)
 /* Get the next free physical memory page or PHYS_NULL if none are available. */
 paddr_t palloc(void)
 {
+	paddr_t result = PHYS_NULL;
+
+	spinlock_acquire(&spinlock);
+
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
 	   to pages containing the user program. */
 	if (!is_using_kernel_page_tables())
@@ -88,7 +94,7 @@ paddr_t palloc(void)
 	page_t *page = first_free_page;
 
 	if (page == NULL)
-		return PHYS_NULL;
+		goto _palloc_exit;
 
 	if (page->magic != PALLOC_PAGE_MAGIC)
 		kpanic("palloc(): unallocated page has been tampered with");
@@ -97,12 +103,22 @@ paddr_t palloc(void)
 	if (first_free_page != NULL)
 		first_free_page->prev = NULL;
 
-	return vtranslate(page);
+	result = vtranslate(page);
+
+_palloc_exit:
+	spinlock_release(&spinlock);
+
+	return result;
 }
 
 /* Free the given physical memory page. */
 void pfree(paddr_t p)
 {
+	if (!is_mappable(p))
+		kpanic("pfree(): attempted to free a page from outside of the palloc region");
+
+	spinlock_acquire(&spinlock);
+
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
 	   to pages containing the user program. */
 	if (!is_using_kernel_page_tables())
@@ -110,8 +126,7 @@ void pfree(paddr_t p)
 
 	page_t *page = ptranslate(p);
 
-	if (page == NULL)
-		kpanic("pfree(): attempted to free a page from outside of the palloc region");
+	/* Page won't be NULL, because we already checked if it is mappable. */
 
 	page->magic = PALLOC_PAGE_MAGIC;
 	page->prev = NULL;
@@ -119,6 +134,8 @@ void pfree(paddr_t p)
 	if (first_free_page != NULL)
 		first_free_page->prev = page;
 	first_free_page = page;
+
+	spinlock_release(&spinlock);
 }
 
 /* Translate physical address to virtual address.

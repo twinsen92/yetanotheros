@@ -24,10 +24,7 @@ noreturn generic_x86_init(void)
 	init_isr();
 	pic_disable();
 	init_lapic();
-	load_idt();
-
-	//cpu_set_interrupts(true);
-
 	yaos2_initialized = 1;
+	load_idt();
 	kernel_main();
 }

@@ -7,7 +7,6 @@
 #include <arch/seg_types.h>
 #include <arch/selectors.h>
 
-/* TODO: Protect with a lock. */
 static seg_t idt[IDT_NOF_ENTRIES];
 static dtr_t idtr = { sizeof(idt), (uint32_t)&idt };
 
@@ -27,12 +26,17 @@ void init_idt(void)
 /* Loads the IDT pointer into the current CPU. */
 void load_idt(void)
 {
+	kassert(is_yaos2_initialized() == true);
+
 	asm_ldtr("idt", &idtr);
 }
 
 /* Sets an entry in the IDT. */
 void idt_set_entry(int_no_t int_no, uint32_t offset, uint16_t selector, uint32_t flags)
 {
+	/* This is easier to do than taking care of reloading it... (TODO: Should it be reloaded?) */
+	kassert(is_yaos2_initialized() == false);
+
 	kassert(int_no < IDT_NOF_ENTRIES);
 	idt[int_no] = idte_construct(offset, selector, flags);
 }

@@ -300,8 +300,6 @@ int kdprintf(const char* restrict format, ...)
 
 noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 {
-	x86_cpu_t *cpu;
-
 	/* Stop interrupts. We're not nice with cpu.h, but at this point, who cares? This also helps
 	   in a situation where cpu.h has not been initialized yet. */
    	cpu_force_cli();
@@ -311,17 +309,6 @@ noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 
 	kdprintf("kernel: panic: %s\n", reason);
 	kdprintf("at %s:%d\n", file, line);
-
-	/* See if we can print additional info. */
-	cpu = cpu_current_or_null();
-
-	if (cpu != NULL && cpu->isr_frame != NULL)
-	{
-		kdprintf("in interrupt %x", cpu->isr_frame->int_no);
-		kdprintf("error_code=%x\n", cpu->isr_frame->error_code);
-		kdprintf("EIP=%p, CS=%x, EFLAGS=%x\n", cpu->isr_frame->eip, cpu->isr_frame->cs, cpu->isr_frame->eflags);
-		kdprintf("ESP=%p, SS=%x\n", cpu->isr_frame->esp, cpu->isr_frame->ss);
-	}
 
 	while (1)
 	{

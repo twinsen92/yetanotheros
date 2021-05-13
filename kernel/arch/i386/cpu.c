@@ -28,7 +28,6 @@ void cpu_add(lapic_id_t lapic_id)
 	/* TODO: We assume that the CPU starts with interrupts disabled here. Is that correct? */
 	cpus[nof_cpus].int_enabled = false;
 	cpus[nof_cpus].cli_stack = 0;
-	cpus[nof_cpus].isr_frame = NULL;
 
 	if (cpu_has_cpuid() == false)
 		kpanic("init_cpu(): CPU does not support CPUID");
@@ -45,7 +44,19 @@ int get_nof_cpus(void)
 /* Gets the current CPU object or NULL if un-initialized. */
 x86_cpu_t *cpu_current_or_null(void)
 {
-	lapic_id_t lapic_id = lapic_get_id();
+	lapic_id_t lapic_id;
+
+	/* We can do this check earlier because if there are no CPUs registered, we don't actually
+	   have to be worried of getting rescheduled... */
+	if (nof_cpus == 0)
+		return NULL;
+
+	/* Need to be called with interrupts off so that we don't get rescheduled between checking
+	   the LAPIC ID and scanning the cpus table. */
+	if (cpu_get_eflags() & EFLAGS_IF)
+		kpanic("cpu_current_or_null(): called with interrupts enabled");
+
+	lapic_id = lapic_get_id();
 
 	for (int i = 0; i < nof_cpus; i++)
 		if (cpus[i].lapic_id == lapic_id)
@@ -57,11 +68,15 @@ x86_cpu_t *cpu_current_or_null(void)
 /* Gets the current CPU object. */
 x86_cpu_t *cpu_current(void)
 {
-	lapic_id_t lapic_id = lapic_get_id();
+	x86_cpu_t *cpu;
 
-	for (int i = 0; i < nof_cpus; i++)
-		if (cpus[i].lapic_id == lapic_id)
-			return &cpus[i];
+	if (cpu_get_eflags() & EFLAGS_IF)
+		kpanic("cpu_current(): called with interrupts enabled");
+
+	cpu = cpu_current_or_null();
+
+	if (cpu)
+		return cpu;
 
 	kpanic("cpu_current(): called from an unregistered CPU");
 }
@@ -70,12 +85,21 @@ x86_cpu_t *cpu_current(void)
 
 void push_no_interrupts(void)
 {
-	x86_cpu_t *cpu = cpu_current();
+	x86_cpu_t *cpu;
 	uint32_t eflags;
+
+	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
+	   that case, we assume the interrupts are off. */
+	if (nof_cpus == 0)
+	{
+		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		return;
+	}
 
 	eflags = cpu_get_eflags();
 
 	cpu_force_cli();
+	cpu = cpu_current();
 
 	if (cpu->cli_stack == 0)
 		cpu->int_enabled = eflags & EFLAGS_IF;
@@ -85,11 +109,21 @@ void push_no_interrupts(void)
 
 void pop_no_interrupts(void)
 {
-	x86_cpu_t *cpu = cpu_current();
+	x86_cpu_t *cpu;
 
+	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
+	   that case, we assume the interrupts are off. */
+	if (nof_cpus == 0)
+	{
+		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		return;
+	}
+
+	/* Calling pop_no_interrupts before push_no_interrupts is an error! */
 	if (cpu_get_eflags() & EFLAGS_IF)
 		kpanic("pop_no_interrupts(): interrupts enabled");
 
+	cpu = cpu_current();
 	cpu->cli_stack -= 1;
 
 	if (cpu->cli_stack < 0)

@@ -2,6 +2,7 @@
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
+#include <kernel/init.h>
 #include <kernel/utils.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
@@ -114,6 +115,8 @@ static bool scan_range(vaddr_t start, vaddr_t end)
 /* Scans the physical memory for the MP tables. Returns true if found. */
 bool mpt_scan(void)
 {
+	kassert(is_yaos2_initialized() == false);
+
 	if (scan_range(EBDA_START, EBDA_END))
 		return true;
 

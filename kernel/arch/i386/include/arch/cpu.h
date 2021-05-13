@@ -21,7 +21,6 @@ typedef struct
 	/* Interrupts */
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
 	int cli_stack; /* Number of cli push operations. */
-	isr_frame_t *isr_frame;
 	/* Segmentation */
 	dtr_t gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
