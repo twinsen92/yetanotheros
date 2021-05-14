@@ -2,8 +2,10 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
+#include <kernel/interrupts.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
+#include <arch/paging.h>
 
 #define MAX_CPUS 8
 #define BOOT_CPU 0
@@ -79,6 +81,80 @@ x86_cpu_t *cpu_current(void)
 		return cpu;
 
 	kpanic("cpu_current(): called from an unregistered CPU");
+}
+
+/* Set current CPU's active flag. */
+void cpu_set_active(bool flag)
+{
+	x86_cpu_t *cpu;
+
+	push_no_interrupts();
+	cpu = cpu_current();
+	atomic_store(&(cpu->active), flag);
+	pop_no_interrupts();
+}
+
+/* Broadcast the kvm_changed flag. */
+void cpu_kvm_changed(void)
+{
+	x86_cpu_t *cpu;
+
+	push_no_interrupts();
+
+	cpu = cpu_current();
+
+	/* Since the calling CPU called this function for a reason, we assume the CPU is awareof it's
+	   own changes. */
+	for (int i = 0; i < nof_cpus; i++)
+		if (cpus[i].num != cpu->num)
+			atomic_store(&(cpus[i].kvm_changed), true);
+
+	pop_no_interrupts();
+}
+
+/* Flush TLB on current CPU. */
+void cpu_flush_tlb(void)
+{
+	paddr_t cr3;
+
+	/* Need to turn off interrupts so that we're not rescheduled during this process. */
+	push_no_interrupts();
+
+	cr3 = cpu_get_cr3();
+
+	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
+	if (cr3 == vm_map_rev_walk(kernel_pd, true))
+		atomic_store(&(cpu_current()->kvm_changed), false);
+
+	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
+
+	pop_no_interrupts();
+}
+
+/* Set CR3 on current CPU. */
+paddr_t cpu_set_cr3(paddr_t cr3)
+{
+	paddr_t prev_cr3;
+
+	/* Need to turn off interrupts so that we're not rescheduled during this process. */
+	push_no_interrupts();
+
+	prev_cr3 = cpu_get_cr3();
+
+	/* Check if we're switching to the same CR3. */
+	if (cr3 == prev_cr3)
+		goto _cpu_set_cr3_redundant;
+
+	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
+	if (cr3 == vm_map_rev_walk(kernel_pd, true))
+		atomic_store(&(cpu_current()->kvm_changed), false);
+
+	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
+
+_cpu_set_cr3_redundant:
+	pop_no_interrupts();
+
+	return prev_cr3;
 }
 
 /* kernel/interrupts.h interface */

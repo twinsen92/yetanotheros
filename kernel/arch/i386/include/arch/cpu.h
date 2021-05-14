@@ -25,6 +25,8 @@ typedef struct
 	dtr_t gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
 	volatile tss_t tss;
+	/* This flag means the kernel's page tables changed and have to be reloaded. */
+	atomic_bool kvm_changed;
 }
 x86_cpu_t;
 
@@ -39,6 +41,26 @@ x86_cpu_t *cpu_current_or_null(void);
 
 /* Gets the current CPU object. */
 x86_cpu_t *cpu_current(void);
+
+/* Set current CPU's active flag. */
+void cpu_set_active(bool flag);
+
+/* Broadcast the kvm_changed flag. */
+void cpu_kvm_changed(void);
+
+/* Flush TLB on current CPU. */
+void cpu_flush_tlb(void);
+
+/* Set CR3 on current CPU. Note that this function avoids unnecessary CR3 switches. Use
+   cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
+paddr_t cpu_set_cr3(paddr_t cr3);
+
+static inline paddr_t cpu_get_cr3(void)
+{
+	paddr_t cr3;
+	asm volatile ("movl %%cr3, %0" : "=r" (cr3));
+	return cr3;
+}
 
 /* A cli that does not update CPU object */
 #define cpu_force_cli() asm volatile("cli" : : : "memory")

@@ -3,6 +3,33 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <arch/memlayout.h>
+#include <arch/paging_types.h>
+
+static inline const vm_region_t *get_region_v(vaddr_t v)
+{
+	for (int i = 0; i < VM_NOF_REGIONS; i++)
+	{
+		if (vm_map[i].vbase <= v && v < vm_map[i].vbase + vm_map[i].size)
+		{
+			return &(vm_map[i]);
+		}
+	}
+
+	return NULL;
+}
+
+static inline const vm_region_t *get_region_p(paddr_t p)
+{
+	for (int i = 0; i < VM_NOF_REGIONS; i++)
+	{
+		if (vm_map[i].pbase <= p && p < vm_map[i].pbase + vm_map[i].size)
+		{
+			return &(vm_map[i]);
+		}
+	}
+
+	return NULL;
+}
 
 /*
 	Walks the virtual memory map.
@@ -14,17 +41,73 @@
 */
 vaddr_t vm_map_walk(paddr_t p, bool panic)
 {
-	for (int i = 0; i < VM_NOF_REGIONS; i++)
+	const vm_region_t *region = get_region_p(p);
+
+	if (region)
 	{
-		if (vm_map[i].pbase <= p && p < vm_map[i].pbase + vm_map[i].size)
-		{
-			ptrdiff_t diff = p - vm_map[i].pbase;
-			return vm_map[i].vbase + diff;
-		}
+		ptrdiff_t diff = p - region->pbase;
+		return region->vbase + diff;
 	}
 
 	if (panic)
 		kpanic("vm_map_walk(): physical address could not be resolved");
 
 	return NULL;
+}
+
+/* A reverse to vm_map_walk() */
+paddr_t vm_map_rev_walk(vaddr_t v, bool panic)
+{
+	const vm_region_t *region = get_region_v(v);
+
+	if (region)
+	{
+		ptrdiff_t diff = v - region->vbase;
+		return region->pbase + diff;
+	}
+
+	if (panic)
+		kpanic("vm_map_walk(): physical address could not be resolved");
+
+	return PHYS_NULL;
+}
+
+/* Checks whether the address is known in the virtual memory map. */
+bool vm_exists(vaddr_t v)
+{
+	const vm_region_t *region = get_region_v(v);
+	return region != NULL;
+}
+
+/* Checks whether the region this address belongs to is statically mapped. */
+bool vm_is_static(vaddr_t v)
+{
+	const vm_region_t *region = get_region_v(v);
+
+	if (region)
+		return region->is_static;
+
+	return false;
+}
+
+/* paddr_t version of vm_is_static() */
+bool vm_is_static_p(paddr_t p)
+{
+	const vm_region_t *region = get_region_p(p);
+
+	if (region)
+		return region->is_static;
+
+	return false;
+}
+
+/* Get the paging flags that should be used for this address. */
+pflags_t vm_get_pflags(vaddr_t v)
+{
+	const vm_region_t *region = get_region_v(v);
+
+	if (region)
+		return region->flags;
+
+	return 0;
 }

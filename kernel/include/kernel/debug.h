@@ -25,8 +25,12 @@ noreturn _kpanic(const char *reason, const char *file, unsigned int line);
 #define kabort() _kpanic("aborted", __FILE__, __LINE__);
 
 /* Kernel assertion that the expression is true. If it is not, the kernel panics. */
+#ifdef KERNEL_DEBUG
 #define kassert(expr)	\
 	if (!(expr))		\
 		_kpanic("assertion " #expr " failed", __FILE__, __LINE__);
+#else
+#define kassert(expr)
+#endif
 
 #endif

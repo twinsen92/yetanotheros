@@ -5,6 +5,8 @@
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 
+#define INT_PAGEFAULT		0x0E
+
 #define INT_IRQ0			0x20
 #define INT_IRQ_TIMER		INT_IRQ0
 #define INT_IRQ_ERROR		(INT_IRQ0 + 19)

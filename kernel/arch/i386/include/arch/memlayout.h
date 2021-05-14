@@ -192,6 +192,7 @@ vm_region_t;
 /* Other regions */
 
 #define VM_PALLOC_REGION 3
+#define VM_DYNAMIC_REGION 4
 
 /* The map itself, defined in early_paging.c */
 extern const vm_region_t *vm_map;
@@ -207,6 +208,22 @@ extern const vm_region_t *vm_map;
 	TODO: Make sure this is used in more places.
 */
 vaddr_t vm_map_walk(paddr_t p, bool panic);
+
+/* A reverse to vm_map_walk() */
+paddr_t vm_map_rev_walk(vaddr_t v, bool panic);
+
+/* Checks whether the address is known in the virtual memory map. */
+bool vm_exists(vaddr_t v);
+
+/* Checks whether the region this address belongs to is statically mapped. Addresses that do not hit
+   any region are presumed not static.*/
+bool vm_is_static(vaddr_t v);
+
+/* paddr_t version of vm_is_static() */
+bool vm_is_static_p(paddr_t p);
+
+/* Get the paging flags that should be used for this address. */
+pflags_t vm_get_pflags(vaddr_t v);
 
 #endif
 

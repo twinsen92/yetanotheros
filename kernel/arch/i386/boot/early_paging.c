@@ -156,6 +156,13 @@ void early_init_kernel_paging(void)
 		map_region_object(&vm_map[i], false);
 	}
 
+	/* Fill in the page table addresses in the page directory. */
+	for (int i = 0; i < PD_LENGTH; i++)
+	{
+		if (pde_get_paddr(new_kernel_pd[i]) == PHYS_NULL)
+			new_kernel_pd[i] |= km_paddr(new_kernel_page_tables + (i * PT_LENGTH));
+	}
+
 	/* Doesn't hurt to flush TLB... */
 	asm_set_cr3(km_paddr(new_kernel_pd));
 }

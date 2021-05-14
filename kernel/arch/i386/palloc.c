@@ -4,6 +4,7 @@
 #include <kernel/debug.h>
 #include <kernel/init.h>
 #include <kernel/spinlock.h>
+#include <kernel/utils.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
 #include <arch/palloc.h>
@@ -50,7 +51,7 @@ void init_palloc(void)
 	initialized = true;
 }
 
-/* Add a memory region to palloc. */
+/* Add a memory region to palloc. Both addresses must be aligned to page boundaries. */
 void palloc_add_free_region(paddr_t from, paddr_t to)
 {
 	kassert(is_yaos2_initialized() == false);
@@ -82,7 +83,8 @@ uint32_t palloc_get_granularity(void)
 /* Get the next free physical memory page or PHYS_NULL if none are available. */
 paddr_t palloc(void)
 {
-	paddr_t result = PHYS_NULL;
+	vaddr_t v = NULL;
+	paddr_t p = PHYS_NULL;
 
 	spinlock_acquire(&spinlock);
 
@@ -103,12 +105,17 @@ paddr_t palloc(void)
 	if (first_free_page != NULL)
 		first_free_page->prev = NULL;
 
-	result = vtranslate(page);
+	v = page;
+	p = vtranslate(page);
 
 _palloc_exit:
 	spinlock_release(&spinlock);
 
-	return result;
+	/* Clear the page. */
+	if (v)
+		kmemset(v, 0, PAGE_SIZE);
+
+	return p;
 }
 
 /* Free the given physical memory page. */
@@ -146,4 +153,10 @@ vaddr_t ptranslate(paddr_t p)
 	if (!is_mappable(p))
 		return NULL;
 	return vm_region->vbase + (p - vm_region->pbase);
+}
+
+/* Check if we're holding the physical memory allocator's lock. This is used to avoid dead-locks. */
+bool palloc_lock_held(void)
+{
+	return spinlock_held(&spinlock);
 }

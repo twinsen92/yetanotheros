@@ -44,6 +44,7 @@ extern pte_t *const kernel_page_tables;
 
 #define asm_set_cr3(v) asm volatile ("movl %0, %%cr3" : : "r" ((v)) : "memory")
 #define asm_invlpg(v) asm volatile ("invlpg (%0)" : : "r" ((v)) : "memory")
+#define asm_flush_tlb() asm volatile ("movl %%cr3, %eax; movl %eax, %%cr3" : : : "eax", "memory")
 
 /* Returns true if CR3 currently contains the kernel page directory. */
 static inline bool is_using_kernel_page_tables(void)
@@ -52,5 +53,14 @@ static inline bool is_using_kernel_page_tables(void)
 	asm volatile ("movl %%cr3, %0" : "=r" (pd));
 	return pd == km_paddr(kernel_pd);
 }
+
+/* Initializes the interface of paging.h */
+void init_paging(void);
+
+/* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
+bool kp_lock_held(void);
+
+/* Map one physical page to one virtual page. */
+void kp_map(vaddr_t v, paddr_t p);
 
 #endif

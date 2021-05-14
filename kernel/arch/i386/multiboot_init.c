@@ -5,6 +5,7 @@
 #include <arch/init.h>
 #include <arch/memlayout.h>
 #include <arch/palloc.h>
+#include <arch/paging.h>
 
 static const char *mb_mmap_type_texts[] = {
 	"invalid",
@@ -20,6 +21,7 @@ static void walk_mmap(struct multiboot_info *info)
 {
 	const char *text;
 	struct multiboot_mmap_entry *cur, *max;
+	paddr_t from, to;
 
 	cur = km_vaddr(info->mmap_addr);
 	max = km_vaddr(info->mmap_addr + info->mmap_length);
@@ -29,8 +31,13 @@ static void walk_mmap(struct multiboot_info *info)
 		text = mb_mmap_type_texts[cur->type];
 		kdprintf("PHYS %x + %x %s\n", (uint32_t)cur->addr, (uint32_t)cur->len, text);
 
-		if (false && cur->type == MULTIBOOT_MEMORY_AVAILABLE)
-			palloc_add_free_region(cur->addr, cur->addr + cur->len);
+		if (cur->type == MULTIBOOT_MEMORY_AVAILABLE)
+		{
+			/* Align the addresses to page boundaries */
+			from = align_to_next_page(cur->addr);
+			to = mask_to_page(cur->addr + cur->len);
+			palloc_add_free_region(from, to);
+		}
 
 		cur = ((void*)cur) + cur->size + sizeof(cur->size);
 	}
