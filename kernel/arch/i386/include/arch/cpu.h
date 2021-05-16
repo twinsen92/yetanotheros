@@ -7,8 +7,10 @@
 #include <arch/gdt.h>
 #include <arch/idt.h>
 #include <arch/interrupts.h>
+#include <arch/proc.h>
 #include <arch/seg_types.h>
 #include <arch/selectors.h>
+#include <arch/thread.h>
 
 #define X86_CPU_MAGIC 0x86
 
@@ -18,15 +20,24 @@ typedef struct
 	int num;
 	atomic_bool active;
 	lapic_id_t lapic_id;
+
 	/* Interrupts */
+
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
 	int cli_stack; /* Number of cli push operations. */
+
 	/* Segmentation */
+
 	dtr_t gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
 	volatile tss_t tss;
+
 	/* This flag means the kernel's page tables changed and have to be reloaded. */
 	atomic_bool kvm_changed;
+
+	/* Scheduler fields. */
+	struct x86_thread *scheduler;
+	struct x86_thread *thread;
 }
 x86_cpu_t;
 
@@ -51,6 +62,10 @@ void cpu_kvm_changed(void);
 /* Flush TLB on current CPU. */
 void cpu_flush_tlb(void);
 
+/* Set CR3 on assumed, current CPU. Note that this function avoids unnecessary CR3 switches. Use
+   cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
+paddr_t cpu_set_cr3_with_cpu(x86_cpu_t *cpu, paddr_t cr3);
+
 /* Set CR3 on current CPU. Note that this function avoids unnecessary CR3 switches. Use
    cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
 paddr_t cpu_set_cr3(paddr_t cr3);
@@ -68,10 +83,10 @@ static inline paddr_t cpu_get_cr3(void)
 /* An sti that does not update CPU object */
 #define cpu_force_sti() asm volatile("sti" : : : "memory")
 
-/* Sets the desired interrupts state for current CPU. Returns previous state. */
-static inline bool cpu_set_interrupts(bool state)
+/* Sets the desired interrupts state for current CPU. Returns previous state. Assumes the current
+   CPU is the given CPU. */
+static inline bool cpu_set_interrupts_with_cpu(x86_cpu_t *cpu, bool state)
 {
-	x86_cpu_t *cpu = cpu_current();
 	bool prev = cpu->int_enabled;
 
 	if (state)
@@ -89,6 +104,9 @@ static inline bool cpu_set_interrupts(bool state)
 
 	return prev;
 }
+
+/* Sets the desired interrupts state for current CPU. Returns previous state. */
+#define cpu_set_interrupts(state) cpu_set_interrupts_with_cpu(cpu_current(), (state))
 
 /* Relax procedure to use when in a spin-loop */
 #define cpu_relax() asm volatile("pause": : :"memory")

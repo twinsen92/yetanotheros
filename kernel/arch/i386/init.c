@@ -3,6 +3,7 @@
 #include <kernel/debug.h>
 #include <kernel/heap.h>
 #include <kernel/init.h>
+#include <kernel/proc.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/gdt.h>
@@ -14,13 +15,13 @@
 #include <arch/mpt.h>
 #include <arch/paging.h>
 #include <arch/pic.h>
+#include <arch/scheduler.h>
+#include <arch/thread.h>
 
 noreturn generic_x86_init(void)
 {
 	if (!mpt_scan())
 		kpanic("Did not find MP tables!");
-
-	cpu_set_active(true);
 
 	init_gdt();
 	init_paging();
@@ -37,7 +38,10 @@ noreturn generic_x86_init(void)
 	init_isr();
 	pic_disable();
 	init_lapic();
+	init_plist();
 	yaos2_initialized = 1;
+	cpu_set_active(true);
+	thread_create(PID_KERNEL, kernel_main, NULL);
 	load_idt();
-	kernel_main();
+	enter_scheduler();
 }

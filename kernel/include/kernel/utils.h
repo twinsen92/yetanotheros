@@ -39,4 +39,12 @@ static inline bool kmemcmp(const void *p1, const void *p2, size_t len)
 	return kstrncmp(p1, p2, len);
 }
 
+static inline size_t kstrlen(const char *p)
+{
+	size_t result = 0;
+	while(*(p++) != 0)
+		result++;
+	return result;
+}
+
 #endif

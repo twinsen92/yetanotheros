@@ -10,6 +10,6 @@ extern uint32_t yaos2_initialized;
 /* Checks whether the basic kernel initialization is complete. TODO: Describe further. */
 #define is_yaos2_initialized() (yaos2_initialized > 0)
 
-noreturn kernel_main(void);
+noreturn kernel_main(void *arg);
 
 #endif

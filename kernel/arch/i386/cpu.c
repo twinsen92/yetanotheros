@@ -34,6 +34,9 @@ void cpu_add(lapic_id_t lapic_id)
 	if (cpu_has_cpuid() == false)
 		kpanic("init_cpu(): CPU does not support CPUID");
 
+	cpus[nof_cpus].scheduler = NULL;
+	cpus[nof_cpus].thread = NULL;
+
 	nof_cpus++;
 }
 
@@ -129,6 +132,32 @@ void cpu_flush_tlb(void)
 	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
 
 	pop_no_interrupts();
+}
+
+/* Set CR3 on current, assumed CPU. */
+paddr_t cpu_set_cr3_with_cpu(x86_cpu_t *cpu, paddr_t cr3)
+{
+	paddr_t prev_cr3;
+
+	/* Need to turn off interrupts so that we're not rescheduled during this process. */
+	push_no_interrupts();
+
+	prev_cr3 = cpu_get_cr3();
+
+	/* Check if we're switching to the same CR3. */
+	if (cr3 == prev_cr3)
+		goto _cpu_set_cr3_redundant;
+
+	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
+	if (cr3 == vm_map_rev_walk(kernel_pd, true))
+		atomic_store(&(cpu->kvm_changed), false);
+
+	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
+
+_cpu_set_cr3_redundant:
+	pop_no_interrupts();
+
+	return prev_cr3;
 }
 
 /* Set CR3 on current CPU. */

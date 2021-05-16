@@ -80,8 +80,8 @@ static void unsafe_grow_heap(size_t new_size)
 	if (mask_to_page(heap + heap_size) != align_to_next_page(heap + new_size))
 	{
 		/* We have to add more pages of memory. */
-		v = (vaddr_t)mask_to_page(heap + new_size);
-		pages_needed = (align_to_next_page(heap + new_size) - mask_to_page(heap + heap_size)) / PAGE_SIZE;
+		v = (vaddr_t)mask_to_page(heap + heap_size);
+		pages_needed = (align_to_next_page(heap + new_size) - mask_to_page(v)) / PAGE_SIZE;
 
 		for (int i = 0; i < pages_needed; i++)
 		{
