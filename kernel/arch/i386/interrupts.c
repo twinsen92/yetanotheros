@@ -46,11 +46,14 @@ void generic_interrupt_handler(struct isr_frame *frame)
 	else
 		kpanic("unhandled interrupt");
 
-	// Force process to give up CPU on clock tick.
-	// If interrupts were on while locks held, would need to check nlock.
-	if(get_current_thread() && get_current_thread()->noarch.state == THREAD_RUNNING &&
-		frame->int_no == INT_IRQ_TIMER)
-		thread_yield();
+	/* Force thread to give up CPU on clock tick. */
+	if (frame->int_no == INT_IRQ_TIMER)
+	{
+		struct x86_thread *thread = get_current_thread();
+
+		if(thread && thread->noarch.state == THREAD_RUNNING)
+			thread_yield();
+	}
 }
 
 /* Initializes the ISR registry. */

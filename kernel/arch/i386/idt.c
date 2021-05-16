@@ -9,6 +9,7 @@
 
 static seg_t idt[IDT_NOF_ENTRIES];
 static struct dtr idtr = { sizeof(idt), (uint32_t)&idt };
+static atomic_bool idt_loaded = false;
 
 /* Initializes the IDT. */
 void init_idt(void)
@@ -26,8 +27,7 @@ void init_idt(void)
 /* Loads the IDT pointer into the current CPU. */
 void load_idt(void)
 {
-	kassert(is_yaos2_initialized() == true);
-
+	atomic_store(&idt_loaded, true);
 	asm_ldtr("idt", &idtr);
 }
 
@@ -38,5 +38,9 @@ void idt_set_entry(int_no_t int_no, uint32_t offset, uint16_t selector, uint32_t
 	kassert(is_yaos2_initialized() == false);
 
 	kassert(int_no < IDT_NOF_ENTRIES);
+
+	if (atomic_load(&idt_loaded) == true)
+		kpanic("idt_set_entry(): called after lidt");
+
 	idt[int_no] = idte_construct(offset, selector, flags);
 }

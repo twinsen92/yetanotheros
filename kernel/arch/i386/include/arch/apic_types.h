@@ -29,6 +29,7 @@ typedef uint32_t lapic_reg_t;
 #define LAPIC_REG_TIMER			(0x0320 / sizeof (lapic_reg_t))   // Local Vector Table 0 (TIMER)
 
 #define LAPIC_TIMER_X1			0x0000000B   // divide counts by 1
+#define LAPIC_TIMER_X16			0x00000003   // divide counts by 16
 #define LAPIC_TIMER_PERIODIC	0x00020000   // Periodic
 
 #define LAPIC_REG_PCINT			(0x0340 / sizeof (lapic_reg_t))   // Performance Counter LVT

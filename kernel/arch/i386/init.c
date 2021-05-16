@@ -24,6 +24,7 @@ noreturn generic_x86_init(void)
 	if (!mpt_scan())
 		kpanic("Did not find MP tables!");
 
+	/* Initialize shared subsystems. */
 	init_gdt();
 	init_paging();
 	init_kernel_heap(&(vm_map[VM_DYNAMIC_REGION]));
@@ -38,11 +39,16 @@ noreturn generic_x86_init(void)
 	init_idt();
 	init_isr();
 	pic_disable();
-	init_lapic();
 	init_plist();
+
+	/* Initialize the first LAPIC. */
+	load_idt();
+	init_lapic();
+
+	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;
+
 	cpu_set_active(true);
 	thread_create(PID_KERNEL, kernel_main, NULL);
-	load_idt();
 	enter_scheduler();
 }

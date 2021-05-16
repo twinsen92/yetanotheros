@@ -102,17 +102,17 @@ static void reschedule(void)
 	struct x86_thread *thread = get_current_thread();
 
 	if(!plist_held())
-		kpanic("sched ptable.lock");
+		kpanic("reschedule(): process list lock not held");
 	if(cpu_current()->cli_stack != 1) /* TODO: Review this. */
-		kpanic("sched locks");
+		kpanic("reschedule(): bad CLI stack");
 	if(thread->noarch.state == THREAD_RUNNING)
-		kpanic("sched running");
+		kpanic("reschedule(): bad thread state");
 	/* Update the process state. We treat the kernel process specially. */
 	if (thread->parent != proc_get_kernel_proc())
 		thread->parent->noarch.state = PROC_READY;
 	/* TODO: Check if process has any other threads running. */
 	if(cpu_get_eflags() & EFLAGS_IF)
-		kpanic("sched interruptible");
+		kpanic("reschedule(): interrupts enabled");
 
 	/* We pass the interrupts enabled flag to the CPU that picks up the thread. */
 	int_enabled = cpu_current()->int_enabled;
