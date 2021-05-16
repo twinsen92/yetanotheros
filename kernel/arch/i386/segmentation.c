@@ -11,7 +11,7 @@
 /* Initializes the GDT for the current CPU. */
 void init_gdt(void)
 {
-	x86_cpu_t *cpu = cpu_current();
+	struct x86_cpu *cpu = cpu_current();
 	seg_t seg;
 
 	push_no_interrupts();
@@ -31,7 +31,7 @@ void init_gdt(void)
 	seg = gdte_construct(0, 0xffffffff, GDTE_DATA32_FLAGS | SEG_BIT_RING(3));
 	cpu->gdt[seg_selector_to_index(USER_DATA_SELECTOR)] = seg;
 
-	seg = gdte_construct((uint32_t)&(cpu->tss), sizeof(tss_t), GDTE_TSS_FLAGS | SEG_BIT_RING(0));
+	seg = gdte_construct((uint32_t)&(cpu->tss), sizeof(struct tss), GDTE_TSS_FLAGS | SEG_BIT_RING(0));
 	cpu->gdt[seg_selector_to_index(KERNEL_TSS_SELECTOR)] = seg;
 
 	/* Load the GDT. */
@@ -56,7 +56,7 @@ void init_gdt(void)
 	);
 
 	/* Let's now fill out the TSS and load it. */
-	memset_volatile(&(cpu->tss), 0, sizeof(tss_t));
+	memset_volatile(&(cpu->tss), 0, sizeof(struct tss));
 
 	asm volatile (
 		"movl %0, %%ebx\n"
@@ -93,7 +93,7 @@ void init_gdt(void)
 		"ltr %%ax\n"
 		"_with_kernel_tss:"
 		:
-		: "r" (&(cpu->tss)), "i" (KERNEL_TSS_SELECTOR), "i" (sizeof(tss_t))
+		: "r" (&(cpu->tss)), "i" (KERNEL_TSS_SELECTOR), "i" (sizeof(struct tss))
 		: "eax", "ax", "ebx", "memory"
 	);
 

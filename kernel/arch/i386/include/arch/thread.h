@@ -53,7 +53,7 @@ void x86_thread_free(struct x86_thread *thread);
 
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */
-struct x86_switch_frame
+packed_struct x86_switch_frame
 {
 	uint32_t edi; /*  0: Saved %edi. */
 	uint32_t esi; /*  4: Saved %esi. */

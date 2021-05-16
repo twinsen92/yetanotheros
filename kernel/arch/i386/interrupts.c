@@ -12,12 +12,12 @@
 #include <arch/scheduler.h>
 #include <arch/selectors.h>
 
-static void (*handlers[ISR_MAX])(isr_frame_t*);
+static void (*handlers[ISR_MAX])(struct isr_frame*);
 
 /* Generic interrupt handler routine. */
-void generic_interrupt_handler(isr_frame_t *frame)
+void generic_interrupt_handler(struct isr_frame *frame)
 {
-	void (*handler)(isr_frame_t*);
+	void (*handler)(struct isr_frame*);
 
 	kassert(frame->int_no < ISR_MAX);
 	handler = handlers[frame->int_no];
@@ -63,7 +63,7 @@ void init_isr(void)
 }
 
 /* Sets a handler in the ISR registry. */
-void isr_set_handler(int_no_t int_no, void (*handler)(isr_frame_t*))
+void isr_set_handler(int_no_t int_no, void (*handler)(struct isr_frame*))
 {
 	kassert(is_yaos2_initialized() == false);
 	kassert(int_no < ISR_MAX);

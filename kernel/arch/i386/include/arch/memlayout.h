@@ -109,7 +109,7 @@ extern symbol_t __kernel_page_tables;
 
 */
 
-typedef struct
+struct vm_region
 {
 	/* Virtual address of the base of the region. Must be aligned to page size. */
 	vaddr_t vbase;
@@ -126,13 +126,12 @@ typedef struct
 
 	/* Flags to use when mapping the region. */
 	pflags_t flags;
-}
-vm_region_t;
+};
 
 #define create_vm_map(map)																		\
 {																								\
 	/* Low (<1M) memory region. Location of BIOS, I/O ports, information tables etc. */			\
-	map[0] = (vm_region_t) {																	\
+	map[0] = (struct vm_region) {																\
 		KM_VIRT_LOW_BASE,																		\
 		km_paddr(KM_VIRT_LOW_BASE),																\
 		km_paddr(KM_VIRT_LOW_END) - km_paddr(KM_VIRT_LOW_BASE),									\
@@ -140,7 +139,7 @@ vm_region_t;
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Kernel's read-only region. Contains kernel's code and read-only data. */					\
-	map[1] = (vm_region_t) {																	\
+	map[1] = (struct vm_region) {																\
 		KM_VIRT_RO_BASE,																		\
 		km_paddr(KM_VIRT_RO_BASE),																\
 		km_paddr(KM_VIRT_RO_END) - km_paddr(KM_VIRT_RO_BASE),									\
@@ -148,7 +147,7 @@ vm_region_t;
 		PAGE_BIT_GLOBAL																			\
 	},																							\
 	/* Kernel's R/W region. Contains kernel's non-constant static data. */						\
-	map[2] = (vm_region_t) {																	\
+	map[2] = (struct vm_region) {																\
 		KM_VIRT_RW_BASE,																		\
 		km_paddr(KM_VIRT_RW_BASE),																\
 		km_paddr(KM_VIRT_RW_END) - km_paddr(KM_VIRT_RW_BASE),									\
@@ -156,7 +155,7 @@ vm_region_t;
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Free physical memory. */																	\
-	map[3] = (vm_region_t) {																	\
+	map[3] = (struct vm_region) {																\
 		(vaddr_t)KM_FREE_PHYS_BASE,																\
 		KM_FREE_PHYS_BASE,																		\
 		/* TODO: This makes us unable to use the last 1GB of physical memory. */				\
@@ -165,7 +164,7 @@ vm_region_t;
 		PAGE_BIT_RW																				\
 	};																							\
 	/* Dynamic kernel memory region. */															\
-	map[4] = (vm_region_t) {																	\
+	map[4] = (struct vm_region) {																\
 		KM_VIRT_END,																			\
 		PHYS_NULL,																				\
 		KM_DEV_VIRT_BASE - KM_VIRT_END,															\
@@ -173,7 +172,7 @@ vm_region_t;
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Memory mapped devices region. */															\
-	map[5] = (vm_region_t) {																	\
+	map[5] = (struct vm_region) {																\
 		KM_DEV_VIRT_BASE,																		\
 		(paddr_t)KM_DEV_VIRT_BASE,																\
 		KM_DEV_VIRT_END - KM_DEV_VIRT_BASE,														\
@@ -195,7 +194,7 @@ vm_region_t;
 #define VM_DYNAMIC_REGION 4
 
 /* The map itself, defined in early_paging.c */
-extern const vm_region_t *vm_map;
+extern const struct vm_region *vm_map;
 
 /*
 	Walks the virtual memory map.

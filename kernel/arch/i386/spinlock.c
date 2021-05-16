@@ -16,16 +16,16 @@ static inline int asm_xchg(void *ptr, int x)
 	return x;
 }
 
-void spinlock_create(spinlock_t *spinlock, const char *name)
+void spinlock_create(struct spinlock *spinlock, const char *name)
 {
 	spinlock->locked = 0;
 	spinlock->name = name;
 	spinlock->cpu = SPINLOCK_INVALID_CPU;
 }
 
-void spinlock_acquire(spinlock_t *spinlock)
+void spinlock_acquire(struct spinlock *spinlock)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 
 	push_no_interrupts();
 
@@ -42,7 +42,7 @@ void spinlock_acquire(spinlock_t *spinlock)
 		spinlock->cpu = SPINLOCK_UNKNOWN_CPU;
 }
 
-void spinlock_release(spinlock_t *spinlock)
+void spinlock_release(struct spinlock *spinlock)
 {
 	if (spinlock->cpu == SPINLOCK_INVALID_CPU)
 		kpanic("spinlock_release(): called on an unheld spinlock");
@@ -61,7 +61,7 @@ void spinlock_release(spinlock_t *spinlock)
 	pop_no_interrupts();
 }
 
-bool spinlock_held(spinlock_t *spinlock)
+bool spinlock_held(struct spinlock *spinlock)
 {
 	push_no_interrupts();
 	bool ret = spinlock->locked && spinlock->cpu == cpu_current()->num;

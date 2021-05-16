@@ -14,7 +14,7 @@
 
 #define X86_CPU_MAGIC 0x86
 
-typedef struct
+struct x86_cpu
 {
 	int magic;
 	int num;
@@ -28,9 +28,9 @@ typedef struct
 
 	/* Segmentation */
 
-	dtr_t gdtr;
+	struct dtr gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
-	volatile tss_t tss;
+	volatile struct tss tss;
 
 	/* This flag means the kernel's page tables changed and have to be reloaded. */
 	atomic_bool kvm_changed;
@@ -38,8 +38,7 @@ typedef struct
 	/* Scheduler fields. */
 	struct x86_thread *scheduler;
 	struct x86_thread *thread;
-}
-x86_cpu_t;
+};
 
 /* Adds a CPU. */
 void cpu_add(lapic_id_t lapic_id);
@@ -48,10 +47,10 @@ void cpu_add(lapic_id_t lapic_id);
 int get_nof_cpus(void);
 
 /* Gets the current CPU object or NULL if un-initialized. */
-x86_cpu_t *cpu_current_or_null(void);
+struct x86_cpu *cpu_current_or_null(void);
 
 /* Gets the current CPU object. */
-x86_cpu_t *cpu_current(void);
+struct x86_cpu *cpu_current(void);
 
 /* Set current CPU's active flag. */
 void cpu_set_active(bool flag);
@@ -64,7 +63,7 @@ void cpu_flush_tlb(void);
 
 /* Set CR3 on assumed, current CPU. Note that this function avoids unnecessary CR3 switches. Use
    cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
-paddr_t cpu_set_cr3_with_cpu(x86_cpu_t *cpu, paddr_t cr3);
+paddr_t cpu_set_cr3_with_cpu(struct x86_cpu *cpu, paddr_t cr3);
 
 /* Set CR3 on current CPU. Note that this function avoids unnecessary CR3 switches. Use
    cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
@@ -85,7 +84,7 @@ static inline paddr_t cpu_get_cr3(void)
 
 /* Sets the desired interrupts state for current CPU. Returns previous state. Assumes the current
    CPU is the given CPU. */
-static inline bool cpu_set_interrupts_with_cpu(x86_cpu_t *cpu, bool state)
+static inline bool cpu_set_interrupts_with_cpu(struct x86_cpu *cpu, bool state)
 {
 	bool prev = cpu->int_enabled;
 

@@ -5,7 +5,7 @@
 #include <arch/memlayout.h>
 #include <arch/paging_types.h>
 
-static inline const vm_region_t *get_region_v(vaddr_t v)
+static inline const struct vm_region *get_region_v(vaddr_t v)
 {
 	for (int i = 0; i < VM_NOF_REGIONS; i++)
 	{
@@ -18,7 +18,7 @@ static inline const vm_region_t *get_region_v(vaddr_t v)
 	return NULL;
 }
 
-static inline const vm_region_t *get_region_p(paddr_t p)
+static inline const struct vm_region *get_region_p(paddr_t p)
 {
 	for (int i = 0; i < VM_NOF_REGIONS; i++)
 	{
@@ -41,7 +41,7 @@ static inline const vm_region_t *get_region_p(paddr_t p)
 */
 vaddr_t vm_map_walk(paddr_t p, bool panic)
 {
-	const vm_region_t *region = get_region_p(p);
+	const struct vm_region *region = get_region_p(p);
 
 	if (region)
 	{
@@ -58,7 +58,7 @@ vaddr_t vm_map_walk(paddr_t p, bool panic)
 /* A reverse to vm_map_walk() */
 paddr_t vm_map_rev_walk(vaddr_t v, bool panic)
 {
-	const vm_region_t *region = get_region_v(v);
+	const struct vm_region *region = get_region_v(v);
 
 	if (region)
 	{
@@ -75,14 +75,14 @@ paddr_t vm_map_rev_walk(vaddr_t v, bool panic)
 /* Checks whether the address is known in the virtual memory map. */
 bool vm_exists(vaddr_t v)
 {
-	const vm_region_t *region = get_region_v(v);
+	const struct vm_region *region = get_region_v(v);
 	return region != NULL;
 }
 
 /* Checks whether the region this address belongs to is statically mapped. */
 bool vm_is_static(vaddr_t v)
 {
-	const vm_region_t *region = get_region_v(v);
+	const struct vm_region *region = get_region_v(v);
 
 	if (region)
 		return region->is_static;
@@ -93,7 +93,7 @@ bool vm_is_static(vaddr_t v)
 /* paddr_t version of vm_is_static() */
 bool vm_is_static_p(paddr_t p)
 {
-	const vm_region_t *region = get_region_p(p);
+	const struct vm_region *region = get_region_p(p);
 
 	if (region)
 		return region->is_static;
@@ -104,7 +104,7 @@ bool vm_is_static_p(paddr_t p)
 /* Get the paging flags that should be used for this address. */
 pflags_t vm_get_pflags(vaddr_t v)
 {
-	const vm_region_t *region = get_region_v(v);
+	const struct vm_region *region = get_region_v(v);
 
 	if (region)
 		return region->flags;

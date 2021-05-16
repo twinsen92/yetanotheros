@@ -9,10 +9,10 @@
 #include <arch/mpt.h>
 #include <arch/mpt_types.h>
 
-static mpt_info_t info = {
+static struct mpt_info info = {
 	NULL
 };
-static mpt_info_t *info_ptr = NULL;
+static struct mpt_info *info_ptr = NULL;
 static uint8_t ioapic_offset = 0;
 const char *pci_pin = "abcd";
 
@@ -130,7 +130,7 @@ bool mpt_scan(void)
 }
 
 /* Gets the pointer to the parsed MP table info. */
-const mpt_info_t *mpt_get_info(void)
+const struct mpt_info *mpt_get_info(void)
 {
 	return info_ptr;
 }

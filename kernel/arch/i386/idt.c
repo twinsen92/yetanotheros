@@ -8,7 +8,7 @@
 #include <arch/selectors.h>
 
 static seg_t idt[IDT_NOF_ENTRIES];
-static dtr_t idtr = { sizeof(idt), (uint32_t)&idt };
+static struct dtr idtr = { sizeof(idt), (uint32_t)&idt };
 
 /* Initializes the IDT. */
 void init_idt(void)

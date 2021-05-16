@@ -19,7 +19,7 @@
    CPU and starts the scheduler loop. This is final. */
 noreturn enter_scheduler(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 	struct x86_proc *kernel_proc;
 	struct x86_proc *proc;
 	struct x86_thread *thread;
@@ -84,7 +84,7 @@ noreturn enter_scheduler(void)
 /* Gets the object of the thread currently running on the current CPU. */
 struct x86_thread *get_current_thread(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 	struct x86_thread *thread;
 
 	/* Don't want to get rescheduled between cpu_current and cpu->thread access. */

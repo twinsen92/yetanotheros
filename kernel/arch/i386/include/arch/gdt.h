@@ -5,7 +5,7 @@
 #include <kernel/cdefs.h>
 #include <arch/seg_types.h>
 
-typedef struct
+packed_struct tss
 {
 	uint16_t link, :16;
 
@@ -40,8 +40,7 @@ typedef struct
 
 	uint16_t debug_trap;
 	uint16_t iopb;
-} __attribute__((packed))
-tss_t;
+};
 
 /* Segement bits. All bits are shifted 32 bits to the right. */
 

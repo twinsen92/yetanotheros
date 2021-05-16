@@ -50,7 +50,7 @@ struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, 
 	uint16_t ds, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
 	void *cookie)
 {
-	isr_frame_t *isr_frame;
+	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
 	struct x86_thread *thread;
 
@@ -76,8 +76,8 @@ struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, 
 
 	/* 2. We'll be switching in an interrupt handler. We need to imitate the stack during
 	   an interrupt, so that iret works. */
-	thread->esp = thread->esp - sizeof(isr_frame_t);
-	isr_frame = (isr_frame_t *)thread->esp;
+	thread->esp = thread->esp - sizeof(struct isr_frame);
+	isr_frame = (struct isr_frame *)thread->esp;
 
 	isr_frame->cs = cs;
 	isr_frame->eip = (uint32_t)tentry;

@@ -11,17 +11,17 @@
 
 #define PALLOC_PAGE_MAGIC 0x12345678
 
-typedef struct _page_t
+struct page
 {
 	uint32_t magic;
-	struct _page_t *prev;
-	struct _page_t *next;
-} page_t;
+	struct page *prev;
+	struct page *next;
+};
 
 static bool initialized = false;
-static spinlock_t spinlock;
-static page_t *first_free_page;
-static const vm_region_t *vm_region;
+static struct spinlock spinlock;
+static struct page *first_free_page;
+static const struct vm_region *vm_region;
 
 /* Checks whether the given page is mappable in the palloc's virtual memory region. */
 static inline bool is_mappable(paddr_t p)
@@ -65,7 +65,7 @@ void palloc_add_free_region(paddr_t from, paddr_t to)
 
 		/* Check if the page has been already added to palloc by looking at the magic field.
 		   TODO: This is bad. Should be reworked.*/
-		page_t *page = ptranslate(from);
+		struct page *page = ptranslate(from);
 
 		if (page->magic == PALLOC_PAGE_MAGIC)
 			continue;
@@ -93,7 +93,7 @@ paddr_t palloc(void)
 	if (!is_using_kernel_page_tables())
 		kpanic("palloc(): called with non-kernel page tables");
 
-	page_t *page = first_free_page;
+	struct page *page = first_free_page;
 
 	if (page == NULL)
 		goto _palloc_exit;
@@ -131,7 +131,7 @@ void pfree(paddr_t p)
 	if (!is_using_kernel_page_tables())
 		kpanic("pfree(): called with non-kernel page tables");
 
-	page_t *page = ptranslate(p);
+	struct page *page = ptranslate(p);
 
 	/* Page won't be NULL, because we already checked if it is mappable. */
 

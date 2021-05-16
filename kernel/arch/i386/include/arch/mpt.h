@@ -6,15 +6,15 @@
 #include <kernel/cdefs.h>
 #include <arch/mpt_types.h>
 
-typedef struct
+struct mpt_info
 {
 	vaddr_t lapic_base;
-} mpt_info_t;
+};
 
 /* Scans the physical memory for the MP tables. Returns true if found. */
 bool mpt_scan(void);
 
 /* Gets the pointer to the parsed MP table info. */
-const mpt_info_t *mpt_get_info(void);
+const struct mpt_info *mpt_get_info(void);
 
 #endif

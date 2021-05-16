@@ -4,6 +4,6 @@
 
 #include <arch/memlayout.h>
 
-void init_kernel_heap(const vm_region_t *region);
+void init_kernel_heap(const struct vm_region *region);
 
 #endif

@@ -4,6 +4,7 @@
 #include <kernel/heap.h>
 #include <kernel/init.h>
 #include <kernel/proc.h>
+#include <kernel/scheduler.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/gdt.h>

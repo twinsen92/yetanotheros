@@ -16,19 +16,19 @@ volatile lapic_reg_t *lapic = NULL;
 	lapic[(reg)] = (val);		\
 	lapic[(reg)];
 
-static void isr_timer(__unused isr_frame_t *frame)
+static void isr_timer(__unused struct isr_frame *frame)
 {
 	/* TODO: Do something more useful here... */
 	lapic_eoi();
 }
 
-static void isr_spurious(isr_frame_t *frame)
+static void isr_spurious(struct isr_frame *frame)
 {
 	kdprintf("spurious interrupt at %x:%x\n", frame->cs, frame->eip);
 	lapic_eoi();
 }
 
-static void isr_error(__unused isr_frame_t *frame)
+static void isr_error(__unused struct isr_frame *frame)
 {
 	kpanic("error interrupt");
 	//lapic_eoi();

@@ -11,8 +11,8 @@
 static pte_t *page_tables;
 static pde_t *new_kernel_pd;
 static pte_t *new_kernel_page_tables;
-static vm_region_t static_vm_map[VM_NOF_REGIONS];
-const vm_region_t *vm_map = static_vm_map;
+static struct vm_region static_vm_map[VM_NOF_REGIONS];
+const struct vm_region *vm_map = static_vm_map;
 static uint8_t tmp_page[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 
 #define is_symbol_aligned_to_page(m) (get_symbol_vaddr(m) == (vaddr_t)mask_to_page(get_symbol_vaddr(m)))
@@ -90,9 +90,9 @@ static void map_region(vaddr_t vfrom, paddr_t pfrom, paddr_t pto, uint32_t flags
 	}
 }
 
-/* Maps a region of physical memory based on a vm_region_t object.  The mapping is done on base
+/* Maps a region of physical memory based on a struct vm_region object.  The mapping is done on base
    kernel page structures. */
-static void map_region_object(const vm_region_t *region, bool early)
+static void map_region_object(const struct vm_region *region, bool early)
 {
 	map_region(region->vbase, region->pbase, region->pbase + region->size, region->flags, early);
 }

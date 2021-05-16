@@ -10,7 +10,7 @@
 #include <arch/proc.h>
 #include <arch/thread.h>
 
-static spinlock_t processes_lock;
+static struct spinlock processes_lock;
 static struct x86_proc kernel_process;
 static struct x86_proc_list processes;
 static atomic_uint next_pid = 1;

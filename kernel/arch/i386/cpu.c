@@ -11,7 +11,7 @@
 #define BOOT_CPU 0
 
 /* We only have one cpu right now. */
-static x86_cpu_t cpus[MAX_CPUS];
+static struct x86_cpu cpus[MAX_CPUS];
 static int nof_cpus = 0;
 
 /* Adds a CPU. */
@@ -47,7 +47,7 @@ int get_nof_cpus(void)
 }
 
 /* Gets the current CPU object or NULL if un-initialized. */
-x86_cpu_t *cpu_current_or_null(void)
+struct x86_cpu *cpu_current_or_null(void)
 {
 	lapic_id_t lapic_id;
 
@@ -71,9 +71,9 @@ x86_cpu_t *cpu_current_or_null(void)
 }
 
 /* Gets the current CPU object. */
-x86_cpu_t *cpu_current(void)
+struct x86_cpu *cpu_current(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 
 	if (cpu_get_eflags() & EFLAGS_IF)
 		kpanic("cpu_current(): called with interrupts enabled");
@@ -89,7 +89,7 @@ x86_cpu_t *cpu_current(void)
 /* Set current CPU's active flag. */
 void cpu_set_active(bool flag)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 
 	push_no_interrupts();
 	cpu = cpu_current();
@@ -100,7 +100,7 @@ void cpu_set_active(bool flag)
 /* Broadcast the kvm_changed flag. */
 void cpu_kvm_changed(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 
 	push_no_interrupts();
 
@@ -135,7 +135,7 @@ void cpu_flush_tlb(void)
 }
 
 /* Set CR3 on current, assumed CPU. */
-paddr_t cpu_set_cr3_with_cpu(x86_cpu_t *cpu, paddr_t cr3)
+paddr_t cpu_set_cr3_with_cpu(struct x86_cpu *cpu, paddr_t cr3)
 {
 	paddr_t prev_cr3;
 
@@ -190,7 +190,7 @@ _cpu_set_cr3_redundant:
 
 void push_no_interrupts(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 	uint32_t eflags;
 
 	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
@@ -214,7 +214,7 @@ void push_no_interrupts(void)
 
 void pop_no_interrupts(void)
 {
-	x86_cpu_t *cpu;
+	struct x86_cpu *cpu;
 
 	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
 	   that case, we assume the interrupts are off. */

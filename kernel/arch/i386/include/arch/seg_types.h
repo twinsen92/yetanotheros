@@ -7,12 +7,11 @@
 
 /* Structures */
 
-typedef struct
+packed_struct dtr
 {
 	uint16_t size;
 	vaddr32_t offset;
-} __attribute__((packed))
-dtr_t;
+};
 
 typedef uint64_t seg_t;
 

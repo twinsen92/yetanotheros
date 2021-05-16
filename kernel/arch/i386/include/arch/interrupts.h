@@ -16,7 +16,7 @@
 
 typedef uint32_t int_no_t;
 
-typedef struct
+packed_struct isr_frame
 {
 	/* Pushed by intr_entry. These are the interrupted task's saved registers. */
 	uint32_t edi;
@@ -48,8 +48,7 @@ typedef struct
 	uint32_t eflags;
 	uint32_t esp;
 	uint16_t ss, :16;
-} __attribute__((packed))
-isr_frame_t;
+};
 
 /* Defined in isr_stubs.S */
 
@@ -58,12 +57,12 @@ extern void isr_exit(void);
 extern void (*isr_stubs[ISR_MAX])(void);
 
 /* Generic interrupt handler routine. */
-void generic_interrupt_handler(isr_frame_t *frame);
+void generic_interrupt_handler(struct isr_frame *frame);
 
 /* Initializes the ISR registry. */
 void init_isr(void);
 
 /* Sets a handler in the ISR registry. */
-void isr_set_handler(int_no_t int_no, void (*handler)(isr_frame_t*));
+void isr_set_handler(int_no_t int_no, void (*handler)(struct isr_frame*));
 
 #endif

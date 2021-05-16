@@ -13,7 +13,8 @@ pte_t *const current_page_tables = (pte_t *const) 0xffc00000;
 pde_t *const kernel_pd = get_symbol_vaddr(__kernel_pd);
 pte_t *const kernel_page_tables = get_symbol_vaddr(__kernel_page_tables);
 
-static spinlock_t kp_spinlock; /* Kernel page tables lock. Acquire this to modify kernel page tables. */
+/* Kernel page tables lock. Acquire this to modify kernel page tables. */
+static struct spinlock kp_spinlock;
 
 static vaddr_t unsafe_translate_or_panic(paddr_t p)
 {
