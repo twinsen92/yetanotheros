@@ -32,17 +32,19 @@ void generic_interrupt_handler(isr_frame_t *frame)
 		bool kvm_changed = atomic_exchange(&(cpu_current()->kvm_changed), false);
 
 		if (kvm_changed)
+		{
 			cpu_flush_tlb();
+			pop_no_interrupts();
+			return;
+		}
 
 		pop_no_interrupts();
-		return;
 	}
 
 	if (handler != NULL)
 		handler(frame);
 	else
 		kpanic("unhandled interrupt");
-
 
 	// Force process to give up CPU on clock tick.
 	// If interrupts were on while locks held, would need to check nlock.
