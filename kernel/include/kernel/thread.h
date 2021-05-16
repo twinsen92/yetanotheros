@@ -11,7 +11,6 @@
 #define THREAD_BLOCKED		4 /* Thread is waiting on a lock. */
 #define THREAD_SLEEPING		5 /* Thread is sleeping. */
 #define THREAD_EXITED		6 /* Thread has exited. */
-#define THREAD_TRUNCATE		7 /* Thread can be deleted. */
 
 struct thread
 {

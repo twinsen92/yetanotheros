@@ -39,7 +39,7 @@ noreturn generic_x86_init(void)
 	init_idt();
 	init_isr();
 	pic_disable();
-	init_plist();
+	init_global_scheduler();
 
 	/* Initialize the first LAPIC. */
 	load_idt();

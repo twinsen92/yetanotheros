@@ -33,7 +33,8 @@ struct x86_thread
 	struct x86_proc *parent; /* Parent process */
 	struct thread noarch; /* Arch-independent structure. */
 
-	LIST_ENTRY(x86_thread) pointers;
+	LIST_ENTRY(x86_thread) lptrs;
+	STAILQ_ENTRY(x86_thread) sqptrs;
 };
 
 LIST_HEAD(x86_thread_list, x86_thread);

@@ -5,6 +5,7 @@
 #include <kernel/interrupts.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
+#include <kernel/spinlock.h>
 #include <kernel/thread.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
@@ -13,6 +14,75 @@
 #include <arch/selectors.h>
 #include <arch/thread.h>
 
+/* Scheduler lock. This applies to all structures used by the scheduler on all CPUs. */
+static struct spinlock global_scheduler_lock;
+
+/* Process list. */
+static struct x86_proc kernel_process;
+static struct x86_proc_list processes;
+static atomic_uint next_pid = 1;
+
+/* Thread queue. */
+static STAILQ_HEAD(x86_thread_queue, x86_thread) queue;
+
+/* Adds the given thread to the given process and sets both to READY. Requires the process table
+   lock. */
+static void thread_new_insert(struct x86_proc *proc, struct x86_thread *thread)
+{
+	kassert(spinlock_held(&global_scheduler_lock));
+
+	LIST_INSERT_HEAD(&(proc->threads), thread, lptrs);
+
+	thread->noarch.state = THREAD_READY;
+	proc->noarch.state = PROC_READY;
+
+	if (thread->noarch.state == THREAD_READY)
+		STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
+}
+
+/* Removes the given thread, marking it THREAD_TRUNCATE. Also checks if the parent process can be
+   marked as PROC_DEFUNCT. */
+static void thread_destroy(struct x86_thread *thread)
+{
+	struct x86_proc *proc;
+
+	kassert(spinlock_held(&global_scheduler_lock));
+	kassert(thread->noarch.state == THREAD_EXITED);
+
+	/* Free the thread's resources. */
+	/* TODO: We might have to switch to process' CR3 here. */
+	proc = thread->parent;
+	LIST_REMOVE(thread, lptrs);
+	/* thread->stack belongs to us */
+	kfree(thread->stack);
+	x86_thread_free(thread);
+
+	if (!LIST_EMPTY(&(proc->threads)))
+	{
+		/* We do not want to destroy the kernel process! */
+		kassert(proc != &kernel_process);
+		proc->noarch.state = PROC_DEFUNCT;
+	}
+
+	/* TODO: Free process' resources. */
+}
+
+/* Initializes the global scheduler data and locks. */
+void init_global_scheduler(void)
+{
+	spinlock_create(&global_scheduler_lock, "global scheduler");
+
+	kernel_process.pd = vm_map_rev_walk(kernel_pd, true);
+	LIST_INIT(&(kernel_process.threads));
+	kernel_process.noarch.pid = PID_KERNEL;
+	kernel_process.noarch.state = PROC_NEW;
+
+	LIST_INIT(&processes);
+	LIST_INSERT_HEAD(&processes, &kernel_process, pointers);
+
+	STAILQ_INIT(&queue);
+}
+
 /* arch/scheduler.h interface */
 
 /* Enters the scheduler. This creates a scheduler thread in the kernel process for the current
@@ -20,23 +90,19 @@
 noreturn enter_scheduler(void)
 {
 	struct x86_cpu *cpu;
-	struct x86_proc *kernel_proc;
 	struct x86_proc *proc;
 	struct x86_thread *thread;
 
 	cpu = cpu_current();
 
 	/* Create the scheduler thread. */
-	kernel_proc = proc_get_kernel_proc();
-	plist_acquire();
-	cpu->scheduler = x86_thread_allocate_empty(kernel_proc, "scheduler thread",
+	spinlock_acquire(&global_scheduler_lock);
+	cpu->scheduler = x86_thread_allocate_empty(&kernel_process, "scheduler thread",
 		KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
-	proc_add_thread(kernel_proc, cpu->scheduler);
-	/* The scheduler thread should not be scheduled! The kernel proc, however, should always be
-	   schedule-able. */
-	kernel_proc->noarch.state = PROC_READY;
+	thread_new_insert(&kernel_process, cpu->scheduler);
+	/* The scheduler thread should not be scheduled! */
 	cpu->scheduler->noarch.state = THREAD_SCHEDULER;
-	plist_release();
+	spinlock_release(&global_scheduler_lock);
 
 	/* Set the scheduler fields in the CPU. */
 	cpu->thread = NULL;
@@ -50,10 +116,16 @@ noreturn enter_scheduler(void)
 			cpu_set_interrupts_with_cpu(cpu, true);
 
 		// Loop over process table looking for process to run.
-		plist_acquire();
-		thread = proc_get_first_ready_thread();
-		if (thread)
+		spinlock_acquire(&global_scheduler_lock);
+		thread = STAILQ_FIRST(&queue);
+		if (thread && thread->noarch.state == THREAD_EXITED)
 		{
+			STAILQ_REMOVE_HEAD(&queue, sqptrs);
+			thread_destroy(thread);
+		}
+		else if (thread)
+		{
+			STAILQ_REMOVE_HEAD(&queue, sqptrs);
 			proc = thread->parent;
 
 			/* Switch to chosen thread. It is the thread's job to release the process list lock and
@@ -63,21 +135,18 @@ noreturn enter_scheduler(void)
 			/* TODO: Reload TSS as well. */
 			cpu_set_cr3_with_cpu(cpu, proc->pd);
 
-			/* We allow the kernel process to be scheduled on any number of CPUs. */
-			if (proc != kernel_proc)
-				proc->noarch.state = PROC_RUNNING;
 			thread->noarch.state = THREAD_RUNNING;
 
 			x86_thread_switch(cpu->scheduler, thread);
 
 			/* TODO: Switch back to kernel CR3. */
-			cpu_set_cr3_with_cpu(cpu, kernel_proc->pd);
+			cpu_set_cr3_with_cpu(cpu, kernel_process.pd);
 
 			/* Thread is done running for now. It should have changed its state before coming
 			   back. */
 			cpu->thread = NULL;
 		}
-		plist_release();
+		spinlock_release(&global_scheduler_lock);
 	}
 }
 
@@ -101,18 +170,17 @@ static void reschedule(void)
 	bool int_enabled;
 	struct x86_thread *thread = get_current_thread();
 
-	if(!plist_held())
+	if(!spinlock_held(&global_scheduler_lock))
 		kpanic("reschedule(): process list lock not held");
 	if(cpu_current()->cli_stack != 1) /* TODO: Review this. */
 		kpanic("reschedule(): bad CLI stack");
 	if(thread->noarch.state == THREAD_RUNNING)
 		kpanic("reschedule(): bad thread state");
-	/* Update the process state. We treat the kernel process specially. */
-	if (thread->parent != proc_get_kernel_proc())
-		thread->parent->noarch.state = PROC_READY;
-	/* TODO: Check if process has any other threads running. */
 	if(cpu_get_eflags() & EFLAGS_IF)
 		kpanic("reschedule(): interrupts enabled");
+
+	/* Put the thread back on the scheduler's queue. */
+	STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
 
 	/* We pass the interrupts enabled flag to the CPU that picks up the thread. */
 	int_enabled = cpu_current()->int_enabled;
@@ -122,10 +190,10 @@ static void reschedule(void)
 
 /* kernel/scheduler.h */
 
-static void thread_entry()
+static void thread_entry(void)
 {
-	/* We enter with the process list lock. We have to release it for other schedulers to work. */
-	plist_release();
+	/* We enter with the global scheduler lock. We have to release it for other schedulers to work. */
+	spinlock_release(&global_scheduler_lock);
 
 	if((cpu_get_eflags() & EFLAGS_IF) == 0)
 		kpanic("thread_entry(): interrupts not enabled");
@@ -145,29 +213,29 @@ void thread_create(unsigned int pid, void (*entry)(void *), void *cookie)
 	if (pid != PID_KERNEL)
 		kpanic("thread_create(): pid != PID_KERNEL unsupported");
 
-	proc = proc_get_kernel_proc();
+	proc = &kernel_process;
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = x86_thread_allocate(proc, "some thread", KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR,
 		stack, 4096, &thread_entry, entry, cookie);
 
-	plist_acquire();
-	proc_add_thread(proc, thread);
-	plist_release();
+	spinlock_acquire(&global_scheduler_lock);
+	thread_new_insert(proc, thread);
+	spinlock_release(&global_scheduler_lock);
 }
 
 /* Forces the current thread to be rescheduled. */
 void thread_yield(void)
 {
-	plist_acquire();
+	spinlock_acquire(&global_scheduler_lock);
 	get_current_thread()->noarch.state = THREAD_READY;
 	reschedule();
-	plist_release();
+	spinlock_release(&global_scheduler_lock);
 }
 
 /* Exits the current thread. */
 noreturn thread_exit(void)
 {
-	plist_acquire();
+	spinlock_acquire(&global_scheduler_lock);
 	get_current_thread()->noarch.state = THREAD_EXITED;
 	reschedule();
 	kpanic("thread_exit(): thread returned");
