@@ -90,8 +90,6 @@ struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, 
 	isr_frame->ss = ds;
 	isr_frame->esp = thread->ebp;
 
-	isr_frame->eflags = EFLAGS_IF; /* TODO: More flags? */
-
 	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
 	   the stack, but omitting the parameters. Make ret take us to isr_exit. */
 	thread->esp = thread->esp - sizeof(struct x86_switch_frame);

@@ -126,6 +126,10 @@ static void thread_entry()
 {
 	/* We enter with the process list lock. We have to release it for other schedulers to work. */
 	plist_release();
+
+	if((cpu_get_eflags() & EFLAGS_IF) == 0)
+		kpanic("thread_entry(): interrupts not enabled");
+
 	struct x86_thread *thread = get_current_thread();
 	thread->entry(thread->cookie);
 	thread_exit();
