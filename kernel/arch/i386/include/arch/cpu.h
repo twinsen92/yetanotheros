@@ -3,6 +3,7 @@
 #define ARCH_I386_CPU_H
 
 #include <kernel/cdefs.h>
+#include <arch/apic.h>
 #include <arch/apic_types.h>
 #include <arch/gdt.h>
 #include <arch/idt.h>
@@ -40,8 +41,13 @@ struct x86_cpu
 	struct x86_thread *thread;
 };
 
+extern lapic_id_t boot_lapic_id;
+
 /* Adds a CPU. */
 void cpu_add(lapic_id_t lapic_id);
+
+/* Sets current CPU as the boot CPU. This sets boot_lapic_id. */
+void cpu_set_boot_cpu(void);
 
 /* Get the number of CPUs. */
 int get_nof_cpus(void);
@@ -51,6 +57,9 @@ struct x86_cpu *cpu_current_or_null(void);
 
 /* Gets the current CPU object. */
 struct x86_cpu *cpu_current(void);
+
+/* Checks if current CPU is boot CPU. */
+#define is_boot_cpu() (boot_lapic_id == lapic_get_id())
 
 /* Set current CPU's active flag. */
 void cpu_set_active(bool flag);

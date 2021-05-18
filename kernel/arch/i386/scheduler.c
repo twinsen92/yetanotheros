@@ -7,6 +7,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/spinlock.h>
 #include <kernel/thread.h>
+#include <kernel/ticks.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
@@ -111,21 +112,48 @@ noreturn enter_scheduler(void)
 
 	while (true)
 	{
-		// Enable interrupts on this processor.
+		/* Enable interrupts on this CPU. */
 		if ((cpu_get_eflags() & EFLAGS_IF) == 0)
 			cpu_set_interrupts_with_cpu(cpu, true);
 
-		// Loop over process table looking for process to run.
 		spinlock_acquire(&global_scheduler_lock);
+
+		/* Pop a thread from the queue. */
 		thread = STAILQ_FIRST(&queue);
-		if (thread && thread->noarch.state == THREAD_EXITED)
+
+		if (!thread)
+			goto _scheduler_continue;
+
+		STAILQ_REMOVE_HEAD(&queue, sqptrs);
+
+		/* Do some thread queue management. */
+		if (thread->noarch.state == THREAD_EXITED)
 		{
-			STAILQ_REMOVE_HEAD(&queue, sqptrs);
+			/* Thread has exited. Destroy it and try getting a new thread from the queue. */
 			thread_destroy(thread);
+			goto _scheduler_continue;
 		}
-		else if (thread)
+
+		if (thread->noarch.state == THREAD_SLEEPING)
 		{
-			STAILQ_REMOVE_HEAD(&queue, sqptrs);
+			if (thread->noarch.sleep_until < ticks_get())
+			{
+				/* We can now run it. */
+				thread->noarch.state = THREAD_READY;
+				thread->noarch.sleep_since = 0;
+				thread->noarch.sleep_until = 0;
+			}
+			else
+			{
+				/* Still sleeping. Put it back in the queue. */
+				STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
+				goto _scheduler_continue;
+			}
+		}
+
+		/* Try running the thread. */
+		if (thread->noarch.state == THREAD_READY)
+		{
 			proc = thread->parent;
 
 			/* Switch to chosen thread. It is the thread's job to release the process list lock and
@@ -146,6 +174,7 @@ noreturn enter_scheduler(void)
 			   back. */
 			cpu->thread = NULL;
 		}
+_scheduler_continue:
 		spinlock_release(&global_scheduler_lock);
 	}
 }
@@ -239,4 +268,21 @@ noreturn thread_exit(void)
 	get_current_thread()->noarch.state = THREAD_EXITED;
 	reschedule();
 	kpanic("thread_exit(): thread returned");
+}
+
+/* Puts the current thread to sleep for a given number of milliseconds. */
+void thread_sleep(unsigned int milliseconds)
+{
+	struct x86_thread *thread;
+	ticks_t cur;
+
+	spinlock_acquire(&global_scheduler_lock);
+
+	thread = get_current_thread();
+	thread->noarch.state = THREAD_SLEEPING;
+	cur = ticks_get();
+	thread->noarch.sleep_since = cur;
+	thread->noarch.sleep_until = cur + (milliseconds * (TICKS_PER_SECOND / 1000));
+	reschedule();
+	spinlock_release(&global_scheduler_lock);
 }

@@ -11,6 +11,7 @@
 #define BOOT_CPU 0
 
 /* We only have one cpu right now. */
+lapic_id_t boot_lapic_id;
 static struct x86_cpu cpus[MAX_CPUS];
 static int nof_cpus = 0;
 
@@ -38,6 +39,14 @@ void cpu_add(lapic_id_t lapic_id)
 	cpus[nof_cpus].thread = NULL;
 
 	nof_cpus++;
+}
+
+/* Sets current CPU as the boot CPU. This sets boot_lapic_id. */
+void cpu_set_boot_cpu(void)
+{
+	/* We do not want to do this after initialization... */
+	kassert(is_yaos2_initialized() == false);
+	boot_lapic_id = lapic_get_id();
 }
 
 /* Get the number of CPUs. */

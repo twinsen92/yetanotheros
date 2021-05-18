@@ -5,6 +5,7 @@
 #include <arch/portio.h>
 
 static struct spinlock pit_spinlock;
+static unsigned int waited_loop_num = 0;
 
 void init_pit(void)
 {
@@ -24,7 +25,7 @@ void pit_release(void)
 void pit_prepare_counter(unsigned int microseconds)
 {
 	unsigned int divisor;
-	uint32_t count;
+	uint16_t count;
 	uint8_t val;
 
 	kassert(microseconds > 0);
@@ -34,14 +35,14 @@ void pit_prepare_counter(unsigned int microseconds)
 	/* Avoid divisions by zero and make sure the divisor will fit within PIT's registers. */
 	kassert(divisor != 0 && (PIT_FREQ / divisor) < 0xffff);
 
-	/* Enable channel 2 of PIT. */
+	/* Enable channel 2 of PIT. Also disables PC speaker. */
 	val = pio_inb(PIT_CHAN2_OUTPUT);
 	pio_outb(PIT_CHAN2_OUTPUT, (val & 0xfd) | 1);
 	/* Select channel 2 of PIT in hardware retriggerable one shot mode. */
 	pio_outb(PIT_COMMAND, PIT_CMD_CHAN(2) | PIT_CMD_2BYTE | PIT_CMD_HW_RETR);
 	/* Program the channel with desired frequency.  */
 	count = PIT_FREQ / divisor;
-	pio_outb(PIT_CHAN(2), count);
+	pio_outb(PIT_CHAN(2), count & 0xff);
 	pio_outb(PIT_CHAN(2), count >> 8);
 }
 
@@ -57,5 +58,5 @@ void pit_start_counter(void)
 void pit_wait_counter(void)
 {
 	/* Wait for PIT to stop counting. */
-	while((pio_inb(PIT_CHAN2_OUTPUT) & 0x20) == 0);
+	while((pio_inb(PIT_CHAN2_OUTPUT) & 0x20) != 0);
 }

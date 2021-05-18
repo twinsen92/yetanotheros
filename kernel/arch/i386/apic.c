@@ -11,6 +11,9 @@
 #include <arch/mpt.h>
 #include <arch/pit.h>
 
+/* kernel/ticks.h export */
+atomic_uint_fast64_t current_ticks;
+
 #define mpt_lapic ((volatile lapic_reg_t *)mpt_get_info()->lapic_base)
 volatile lapic_reg_t *lapic = NULL;
 static uint32_t calibrated_ticr = 0;
@@ -30,7 +33,9 @@ static void isr_timer_calibration(__unused struct isr_frame *frame)
 
 static void isr_timer(__unused struct isr_frame *frame)
 {
-	/* TODO: Do something more useful here... */
+	/* Increment the ticks count on the boot CPU. */
+	if (is_boot_cpu())
+		ticks_increment();
 	lapic_eoi();
 }
 
@@ -68,8 +73,8 @@ static void lapic_calibrate_timer_with_pit(void)
 	lapicw(LAPIC_REG_TDCR, LAPIC_TIMER_X16);
 	lapicw(LAPIC_REG_TIMER, INT_IRQ_TIMER);
 
-	/* Prepare a 1ms countdown in PIT. */
-	pit_prepare_counter(1000);
+	/* Prepare a 10ms countdown in PIT. */
+	pit_prepare_counter(10000);
 	/* Start the countdown in PIT. */
 	pit_start_counter();
 	/* Start the LAPIC timer. */
@@ -85,9 +90,9 @@ static void lapic_calibrate_timer_with_pit(void)
 	/* We don't need interrupts anymore. */
 	cpu_force_cli();
 
-	/* We used a divisor of 16, so shift the result left by 16. We also waited for 1/1000 of a second
-	   so multiply by 1000. We now have the bus frequency in Hz. */
-	bus_freq = (count << 4) * 1000;
+	/* We used a divisor of 16, so shift the result left by 16. We also waited for 1/100 of a second
+	   so multiply by 100. We now have the bus frequency in Hz. */
+	bus_freq = (count << 4) * 100;
 	/* Calculate the TICR we need to tick with the frequency of TICKS_PER_SECOND. */
 	calibrated_ticr = (bus_freq / TICKS_PER_SECOND) >> 4;
 

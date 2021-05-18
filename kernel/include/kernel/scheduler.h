@@ -13,4 +13,7 @@ void thread_yield(void);
 /* Exits the current thread. */
 noreturn thread_exit(void);
 
+/* Puts the current thread to sleep for a given number of milliseconds. */
+void thread_sleep(unsigned int milliseconds);
+
 #endif

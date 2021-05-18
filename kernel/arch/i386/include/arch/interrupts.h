@@ -9,7 +9,6 @@
 
 #define INT_IRQ0			0x20
 #define INT_IRQ_TIMER		INT_IRQ0
-#define TICKS_PER_SECOND	1000
 #define INT_IRQ_ERROR		(INT_IRQ0 + 19)
 #define INT_IRQ_SPURIOUS	(INT_IRQ0 + 31)
 

@@ -2,6 +2,8 @@
 #ifndef _KERNEL_THREAD_H
 #define _KERNEL_THREAD_H
 
+#include <kernel/ticks.h>
+
 #define KERNEL_TID_IDLE 0
 
 #define THREAD_NEW			0 /* Thread has just been created. */
@@ -16,6 +18,8 @@ struct thread
 {
 	unsigned int tid;
 	int state;
+	ticks_t sleep_since;
+	ticks_t sleep_until;
 	char name[32];
 };
 

@@ -24,8 +24,11 @@ noreturn generic_x86_init(void)
 	if (!mpt_scan())
 		kpanic("Did not find MP tables!");
 
-	/* Initialize shared subsystems. */
+	/* Some early CPU initialization. */
 	init_gdt();
+	cpu_set_boot_cpu();
+
+	/* Initialize shared subsystems. */
 	init_paging();
 	init_kernel_heap(&(vm_map[VM_DYNAMIC_REGION]));
 
