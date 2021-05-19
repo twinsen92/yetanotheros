@@ -16,6 +16,8 @@ lapic_id_t lapic_get_id(void);
 
 void lapic_eoi(void);
 
+void lapic_start_ap(lapic_id_t id, uint16_t entry);
+
 /* I/O APIC */
 
 /* Registers an I/O APIC */

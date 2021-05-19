@@ -3,13 +3,16 @@
 #define ARCH_I386_MEMLAYOUT_H
 
 /* Basic assumptions about the kernel layout in virtual and physical memory.  */
-#define ASM_KM_PHYS_BASE		0
-#define ASM_KM_VIRT_BASE		(0xC0000000 + ASM_KM_PHYS_BASE)
-#define ASM_KM_EXEC_PHYS_BASE	0x00100000
-#define ASM_KM_EXEC_VIRT_BASE	(ASM_KM_VIRT_BASE + ASM_KM_EXEC_PHYS_BASE)
+#define ASM_KM_PHYS_BASE			0
+#define ASM_KM_VIRT_BASE			(0xC0000000 + ASM_KM_PHYS_BASE)
+#define ASM_KM_EXEC_PHYS_BASE		0x00100000
+#define ASM_KM_EXEC_VIRT_BASE		(ASM_KM_VIRT_BASE + ASM_KM_EXEC_PHYS_BASE)
 /* Memory region where devices and the current paging structures will be mapped. */
-#define ASM_KM_DEV_VIRT_BASE	0xFE000000
-#define ASM_KM_DEV_VIRT_END		0xFFC00000
+#define ASM_KM_DEV_VIRT_BASE		0xFE000000
+#define ASM_KM_DEV_VIRT_END			0xFFC00000
+/* AP entry code low physical memory address. The code for AP entry will be moved there in
+   init_ap_entry().*/
+#define ASM_KM_PHYS_AP_ENTRY_BASE	0x00008000
 
 #ifndef __ASSEMBLER__
 
@@ -17,12 +20,13 @@
 #include <kernel/cdefs.h>
 #include <arch/paging_types.h>
 
-#define KM_PHYS_BASE		((paddr_t)(ASM_KM_PHYS_BASE))
-#define KM_VIRT_BASE		((vaddr_t)(ASM_KM_VIRT_BASE))
-#define KM_EXEC_PHYS_BASE	((paddr_t)(ASM_KM_EXEC_PHYS_BASE))
-#define KM_EXEC_VIRT_BASE	((vaddr_t)(ASM_KM_EXEC_VIRT_BASE))
-#define KM_DEV_VIRT_BASE	((vaddr_t)(ASM_KM_DEV_VIRT_BASE))
-#define KM_DEV_VIRT_END		((vaddr_t)(ASM_KM_DEV_VIRT_END))
+#define KM_PHYS_BASE				((paddr_t)(ASM_KM_PHYS_BASE))
+#define KM_VIRT_BASE				((vaddr_t)(ASM_KM_VIRT_BASE))
+#define KM_EXEC_PHYS_BASE			((paddr_t)(ASM_KM_EXEC_PHYS_BASE))
+#define KM_EXEC_VIRT_BASE			((vaddr_t)(ASM_KM_EXEC_VIRT_BASE))
+#define KM_DEV_VIRT_BASE			((vaddr_t)(ASM_KM_DEV_VIRT_BASE))
+#define KM_DEV_VIRT_END				((vaddr_t)(ASM_KM_DEV_VIRT_END))
+#define KM_PHYS_AP_ENTRY_BASE		((paddr_t)(ASM_KM_PHYS_AP_ENTRY_BASE))
 
 /* Linker symbols. */
 extern symbol_t __kernel_virtual_offset;
@@ -34,23 +38,40 @@ extern symbol_t __kernel_mem_ro_end;
 extern symbol_t __kernel_mem_rw_begin;
 extern symbol_t __kernel_mem_rw_end;
 extern symbol_t __kernel_mem_break;
+extern symbol_t __kernel_ap_entry_begin;
+extern symbol_t __kernel_ap_entry_end;
 
 extern symbol_t __kernel_pd;
 extern symbol_t __kernel_page_tables;
 
-#define KM_VIRT_LOW_BASE		(get_symbol_vaddr(__kernel_low_begin))
-#define KM_VIRT_LOW_END			(get_symbol_vaddr(__kernel_low_end))
-#define KM_VIRT_RO_BASE			(get_symbol_vaddr(__kernel_mem_ro_begin))
-#define KM_VIRT_RO_END			(get_symbol_vaddr(__kernel_mem_ro_end))
-#define KM_VIRT_RW_BASE			(get_symbol_vaddr(__kernel_mem_rw_begin))
-#define KM_VIRT_RW_END			(get_symbol_vaddr(__kernel_mem_rw_end))
+#define KM_VIRT_LOW_BASE			(get_symbol_vaddr(__kernel_low_begin))
+#define KM_VIRT_LOW_END				(get_symbol_vaddr(__kernel_low_end))
+#define KM_VIRT_RO_BASE				(get_symbol_vaddr(__kernel_mem_ro_begin))
+#define KM_VIRT_RO_END				(get_symbol_vaddr(__kernel_mem_ro_end))
+#define KM_VIRT_RW_BASE				(get_symbol_vaddr(__kernel_mem_rw_begin))
+#define KM_VIRT_RW_END				(get_symbol_vaddr(__kernel_mem_rw_end))
+/* AP entry code addresses in kernel's high memory region. This is where the actual executable is
+   mapped. In physical memory it's at KM_VIRT_AP_ENTRY_BASE - KM_VIRT_BASE, as usual. */
+#define KM_VIRT_AP_ENTRY_BASE		(get_symbol_vaddr(__kernel_ap_entry_begin))
+#define KM_VIRT_AP_ENTRY_END		(get_symbol_vaddr(__kernel_ap_entry_end))
 
 #define km_paddr(v) (((paddr_t)(v)) - ((uintptr_t)KM_VIRT_BASE))
 #define km_vaddr(p) (KM_VIRT_BASE + ((uintptr_t)(p)))
 
+#define km_real_vaddr(seg, off) km_vaddr(((seg << 4) | off))
+
+/* AP entry code end in low physical memory. */
+#define KM_PHYS_AP_ENTRY_END		((paddr_t)(KM_PHYS_AP_ENTRY_BASE + (uint32_t) \
+	(KM_VIRT_AP_ENTRY_END - KM_VIRT_AP_ENTRY_BASE)))
+/* Calculate the address of the AP entry code in KM_PHYS_AP_ENTRY_BASE-KM_PHYS_AP_ENTRY_END range.
+   That address is casted to vaddr_t because we do keep that region mapped verbatim to virtual
+   memory space. */
+#define km_ap_entry_reloc(v)		((vaddr_t)KM_PHYS_AP_ENTRY_BASE + (ptrdiff_t) \
+	(v - KM_VIRT_AP_ENTRY_BASE))
+
 /* Information for the physical memory allocator. */
-#define KM_VIRT_END				(get_symbol_vaddr(__kernel_mem_break))
-#define KM_FREE_PHYS_BASE		(km_paddr(KM_VIRT_END))
+#define KM_VIRT_END					(get_symbol_vaddr(__kernel_mem_break))
+#define KM_FREE_PHYS_BASE			(km_paddr(KM_VIRT_END))
 
 /*
 	Virtual space map. Acts as a sort of template for kernel page table construction.
@@ -62,6 +83,18 @@ extern symbol_t __kernel_page_tables;
 	Virtual low
 
 						0
+						...
+						KM_PHYS_AP_ENTRY_BASE
+
+			Not used.
+
+						KM_PHYS_AP_ENTRY_BASE			KM_PHYS_AP_ENTRY_BASE
+						...								...
+						KM_PHYS_AP_ENTRY_END			KM_PHYS_AP_ENTRY_END
+
+			AP entry stuff.
+
+						KM_PHYS_AP_ENTRY_END
 						...
 						KM_FREE_PHYS_BASE
 
@@ -179,9 +212,17 @@ struct vm_region
 		true,																					\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
+	/* Memory mapped devices region. */															\
+	map[6] = (struct vm_region) {																\
+		(vaddr_t)KM_PHYS_AP_ENTRY_BASE,															\
+		KM_PHYS_AP_ENTRY_BASE,																	\
+		KM_PHYS_AP_ENTRY_END - KM_PHYS_AP_ENTRY_BASE,											\
+		true,																					\
+		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
+	};																							\
 }
 
-#define VM_NOF_REGIONS 6
+#define VM_NOF_REGIONS 7
 
 /* Executable region indices, used by early_paging.c to initially map the kernel */
 

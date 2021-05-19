@@ -55,6 +55,14 @@ int get_nof_cpus(void)
 	return nof_cpus;
 }
 
+/* Enumerates non-boot CPUs. */
+void cpu_enumerate_aps(void (*receiver)(struct x86_cpu *))
+{
+	for (int i = 0; i < nof_cpus; i++)
+		if (cpus[i].lapic_id != boot_lapic_id)
+			receiver(&cpus[i]);
+}
+
 /* Gets the current CPU object or NULL if un-initialized. */
 struct x86_cpu *cpu_current_or_null(void)
 {

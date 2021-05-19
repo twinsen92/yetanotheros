@@ -52,6 +52,9 @@ void cpu_set_boot_cpu(void);
 /* Get the number of CPUs. */
 int get_nof_cpus(void);
 
+/* Enumerates non-boot CPUs. */
+void cpu_enumerate_aps(void (*receiver)(struct x86_cpu *));
+
 /* Gets the current CPU object or NULL if un-initialized. */
 struct x86_cpu *cpu_current_or_null(void);
 

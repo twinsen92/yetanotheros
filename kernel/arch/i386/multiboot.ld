@@ -31,6 +31,17 @@ SECTIONS
 		/* Test shift to make sure the boot part works. TODO: Remove this shift. */
 		/* . = . + 4M; */
 
+		/* Put the AP entry code and data at a known position in memory. We will move it to low
+		   memory later, before starting other CPUs. */
+		. = ALIGN(4K);
+
+		__kernel_ap_entry_begin = . ;
+
+		arch/i386/ap_entry.o
+
+		. = ALIGN(4K);
+		__kernel_ap_entry_end = . ;
+
 		/* Now we can continue as usual. */
 		*(.text)
 		*(.eh_frame)

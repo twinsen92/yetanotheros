@@ -17,7 +17,10 @@
 #include <arch/paging.h>
 #include <arch/pic.h>
 #include <arch/scheduler.h>
+#include <arch/smp.h>
 #include <arch/thread.h>
+
+static noreturn cpu_scheduler_entry(void);
 
 noreturn generic_x86_init(void)
 {
@@ -48,10 +51,28 @@ noreturn generic_x86_init(void)
 	load_idt();
 	init_lapic();
 
+	init_ap_entry();
+
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;
 
-	cpu_set_active(true);
 	thread_create(PID_KERNEL, kernel_main, NULL);
+
+	start_aps();
+
+	cpu_scheduler_entry();
+}
+
+noreturn cpu_entry(void)
+{
+	init_gdt();
+	load_idt();
+	init_lapic();
+	cpu_scheduler_entry();
+}
+
+static noreturn cpu_scheduler_entry(void)
+{
+	cpu_set_active(true);
 	enter_scheduler();
 }

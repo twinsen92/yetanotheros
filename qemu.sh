@@ -4,5 +4,6 @@ set -e
 
 qemu-system-$(./target-triplet-to-arch.sh $HOST) -cdrom yaos2_multiboot.iso \
 	-monitor stdio \
+	-smp 2 \
+	-D qemu.log \
 #	-d int \
-#	-D qemu.log

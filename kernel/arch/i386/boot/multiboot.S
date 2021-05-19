@@ -73,12 +73,12 @@ _start:
 
 	# Set the paging bit
 	movl %cr0, %ecx
-	orl $0x80000000, %ecx
+	orl $CR0_PG, %ecx
 	movl %ecx, %cr0
 
 	# Set the global page enable bit
 	movl %cr4, %ecx
-	orl $0x00000080, %ecx
+	orl $CR4_PGE, %ecx
 	movl %ecx, %cr4
 
 	leal _start_with_paging, %ecx

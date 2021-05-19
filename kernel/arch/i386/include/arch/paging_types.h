@@ -11,6 +11,11 @@
 
 #define PAGE_RW_PRESENT		0x003
 
+/* Control register paging related bits. */
+
+#define CR0_PG				0x80000000 /* Paging enable */
+#define CR4_PGE				0x00000080 /* Global page enable */
+
 #ifndef __ASSEMBLER__
 
 #include <kernel/addr.h>

@@ -6,4 +6,6 @@
 
 noreturn generic_x86_init(void);
 
+noreturn cpu_entry(void);
+
 #endif

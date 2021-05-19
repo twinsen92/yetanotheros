@@ -5,7 +5,6 @@
 #include <arch/portio.h>
 
 static struct spinlock pit_spinlock;
-static unsigned int waited_loop_num = 0;
 
 void init_pit(void)
 {

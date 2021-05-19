@@ -5,10 +5,12 @@
 #include <kernel/init.h>
 #include <arch/apic.h>
 #include <arch/apic_types.h>
+#include <arch/cmos.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
 #include <arch/mpt.h>
+#include <arch/portio.h>
 #include <arch/pit.h>
 
 /* kernel/ticks.h export */
@@ -191,6 +193,41 @@ lapic_id_t lapic_get_id(void)
 void lapic_eoi(void)
 {
 	lapicw(LAPIC_REG_EOI, 0);
+}
+
+void lapic_start_ap(lapic_id_t id, uint16_t entry)
+{
+    uint16_t *vec;
+
+	pit_acquire();
+
+	/* From MP specification:
+	   "The BSP must initialize CMOS shutdown code to 0AH and the warm reset vector (DWORD based
+	   at 40:67) to point at the AP startup code prior to the [universal startup algorithm]." */
+	pio_outb(CMOS_PORT, CMOS_SHUTDOWN_STATUS);
+	pio_outb(CMOS_RETURN, CMOS_JMP_WITHOUT_EOI);
+	vec = (uint16_t*)km_real_vaddr(0x40, 0x67);
+	vec[0] = 0;
+	vec[1] = entry >> 4;
+
+	/* "Universal startup algorithm." Send INIT (level-triggered) interrupt to reset other CPU. */
+	lapicw(LAPIC_REG_ICRHI, ((uint32_t)id) << 24);
+	lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL | LAPIC_ICR_ASSERT);
+	pit_wait(200);
+	lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL);
+	pit_wait(10000);
+
+	/* Send startup IPI (twice!) to enter code. Regular hardware is supposed to only accept
+	   a STARTUP when it is in the halted state due to an INIT. So the second should be ignored,
+	   but it is part of the official Intel algorithm. */
+	for(int i = 0; i < 2; i++)
+	{
+		lapicw(LAPIC_REG_ICRHI, ((uint32_t)id) << 24);
+		lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_STARTUP | (((uint32_t)entry) >> 12));
+		pit_wait(200);
+	}
+
+	pit_release();
 }
 
 /* Registers an I/O APIC */

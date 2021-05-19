@@ -19,6 +19,19 @@ static inline void kmemset(void *v, char val, size_t len)
 		*(p++) = val;
 }
 
+static inline void kmemmove(void *v1, void *v2, size_t len)
+{
+	char *p1 = v1;
+	char *p2 = v2;
+	while (len-- > 0)
+	{
+		*p1 = *p2;
+		*p2 = 0;
+		p1++;
+		p2++;
+	}
+}
+
 static inline bool kstrncmp(const char *p1, const char *p2, size_t len)
 {
 	while (len-- > 0)

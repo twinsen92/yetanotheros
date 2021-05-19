@@ -2,8 +2,57 @@
 #ifndef ARCH_I386_GDT_H
 #define ARCH_I386_GDT_H
 
-#include <kernel/cdefs.h>
 #include <arch/seg_types.h>
+
+/* Segement bits. All bits are shifted 32 bits to the right. */
+
+/* Access flags */
+
+#define GDTE_BIT_ACCESSED 0x100 /* Entry has been accessed. Set by CPU. */
+#define GDTE_BIT_CS_READABLE 0x200 /* Code segment is readable. */
+#define GDTE_BIT_DS_WRITABLE 0x200 /* Data segment is writable. */
+#define GDTE_BIT_DS_DOWN 0x400 /* Data segment grows downwards (limit greater than base.) */
+#define GDTE_BIT_CS_CONFORM 0x400 /* Code segment can be accessed by lower rings. */
+#define GDTE_BIT_CS_EXECUTABLE 0x800 /* Code segment is executable. */
+#define GDTE_BIT 0x1000 /* GDT segment. */
+
+/* Type flags */
+
+#define GDTE_BIT_SOFTWARE 0x100000 /* Segment is for software information only. */
+#define GDTE_BIT_64 0x200000 /* 64-bit (long) mode segment. */
+#define GDTE_BIT_32 0x400000 /* 32-bit mode segment. */
+#define GDTE_BIT_PAGE 0x800000 /* Segment has page granularity. */
+
+/* Common flag sets */
+
+#define GDTE_CODE32_FLAGS (GDTE_BIT_CS_READABLE | GDTE_BIT_CS_EXECUTABLE | GDTE_BIT \
+	| SEG_BIT_PRESENT | GDTE_BIT_32 | GDTE_BIT_PAGE)
+#define GDTE_DATA32_FLAGS (GDTE_BIT_DS_WRITABLE | GDTE_BIT | SEG_BIT_PRESENT | GDTE_BIT_32 \
+	| GDTE_BIT_PAGE)
+#define GDTE_TSS_FLAGS (GDTE_BIT_ACCESSED | GDTE_BIT_CS_EXECUTABLE | SEG_BIT_PRESENT \
+	| GDTE_BIT_32 | GDTE_BIT_PAGE)
+
+/* Control register segmentation related bits. */
+
+#define CR0_PE				0x00000001 /* Protected mode enable */
+
+#ifdef __ASSEMBLER__
+
+#define ASM_GDTE_CODE32_FLAGS (GDTE_BIT_CS_READABLE + GDTE_BIT_CS_EXECUTABLE + GDTE_BIT \
+	+ SEG_BIT_PRESENT + GDTE_BIT_32 + GDTE_BIT_PAGE)
+#define ASM_GDTE_DATA32_FLAGS (GDTE_BIT_DS_WRITABLE + GDTE_BIT + SEG_BIT_PRESENT + GDTE_BIT_32 \
+	+ GDTE_BIT_PAGE)
+#define ASM_GDTE_TSS_FLAGS (GDTE_BIT_ACCESSED + GDTE_BIT_CS_EXECUTABLE + SEG_BIT_PRESENT \
+	+ GDTE_BIT_32 + GDTE_BIT_PAGE)
+
+#define ASM_GDTE_NULL .long 0, 0 /* Null descriptor. */
+#define ASM_GDTE_ALL(flags) .long 0x0000FFFF, (0x000F0000 + (flags)) /* 4 GiB segment - "all" */
+
+#endif
+
+#ifndef __ASSEMBLER__
+
+#include <kernel/cdefs.h>
 
 packed_struct tss
 {
@@ -42,34 +91,6 @@ packed_struct tss
 	uint16_t iopb;
 };
 
-/* Segement bits. All bits are shifted 32 bits to the right. */
-
-/* Access flags */
-
-#define GDTE_BIT_ACCESSED 0x100 /* Entry has been accessed. Set by CPU. */
-#define GDTE_BIT_CS_READABLE 0x200 /* Code segment is readable. */
-#define GDTE_BIT_DS_WRITABLE 0x200 /* Data segment is writable. */
-#define GDTE_BIT_DS_DOWN 0x400 /* Data segment grows downwards (limit greater than base.) */
-#define GDTE_BIT_CS_CONFORM 0x400 /* Code segment can be accessed by lower rings. */
-#define GDTE_BIT_CS_EXECUTABLE 0x800 /* Code segment is executable. */
-#define GDTE_BIT 0x1000 /* GDT segment. */
-
-/* Type flags */
-
-#define GDTE_BIT_SOFTWARE 0x100000 /* Segment is for software information only. */
-#define GDTE_BIT_64 0x200000 /* 64-bit (long) mode segment. */
-#define GDTE_BIT_32 0x400000 /* 32-bit mode segment. */
-#define GDTE_BIT_PAGE 0x800000 /* Segment has page granularity. */
-
-/* Common flag sets */
-
-#define GDTE_CODE32_FLAGS (GDTE_BIT_CS_READABLE | GDTE_BIT_CS_EXECUTABLE | GDTE_BIT \
-	| SEG_BIT_PRESENT | GDTE_BIT_32 | GDTE_BIT_PAGE)
-#define GDTE_DATA32_FLAGS (GDTE_BIT_DS_WRITABLE | GDTE_BIT | SEG_BIT_PRESENT | GDTE_BIT_32 \
-	| GDTE_BIT_PAGE)
-#define GDTE_TSS_FLAGS (GDTE_BIT_ACCESSED | GDTE_BIT_CS_EXECUTABLE | SEG_BIT_PRESENT \
-	| GDTE_BIT_32 | GDTE_BIT_PAGE)
-
 /* Macros and inlines. */
 
 static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags) {
@@ -96,5 +117,7 @@ static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags
 
 /* Initializes the GDT for the current CPU. */
 void init_gdt(void);
+
+#endif
 
 #endif

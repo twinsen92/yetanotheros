@@ -128,6 +128,8 @@ void early_init_kernel_paging(void)
 	early_kassert(is_symbol_aligned_to_page(__kernel_mem_rw_begin));
 	early_kassert(is_symbol_aligned_to_page(__kernel_mem_rw_end));
 	early_kassert(is_symbol_aligned_to_page(__kernel_mem_break));
+	early_kassert(is_symbol_aligned_to_page(__kernel_ap_entry_begin));
+	early_kassert(is_symbol_aligned_to_page(__kernel_ap_entry_end));
 	early_kassert(is_symbol_aligned_to_page(__kernel_pd));
 	early_kassert(is_symbol_aligned_to_page(__kernel_page_tables));
 
