@@ -95,6 +95,16 @@ packed_struct mp_conf_lint
 	uint8_t dest_lapic_int;
 };
 
+packed_union mp_conf_entry
+{
+	uint8_t type;
+	struct mp_conf_proc proc;
+	struct mp_conf_bus bus;
+	struct mp_conf_ioapic ioapic;
+	struct mp_conf_ioint ioint;
+	struct mp_conf_lint lint;
+};
+
 /* Scanning related constants. These are within the first 1M of memory, so we can use km_vaddr(). */
 
 #define EBDA_START           km_vaddr(0x0009fc00)

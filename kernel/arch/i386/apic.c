@@ -16,7 +16,6 @@
 /* kernel/ticks.h export */
 atomic_uint_fast64_t current_ticks;
 
-#define mpt_lapic ((volatile lapic_reg_t *)mpt_get_info()->lapic_base)
 volatile lapic_reg_t *lapic = NULL;
 static uint32_t calibrated_ticr = 0;
 static uint64_t bus_freq = 0;
@@ -136,7 +135,7 @@ void init_lapic(void)
 	if (lapic == NULL)
 	{
 		/* First time configuring a LAPIC. */
-		lapic = mpt_get_info()->lapic_base;
+		lapic = vm_map_walk(mpt_header->lapic_addr, true);
 
 		/* TODO: Do a proper ISR registration, like in YAOS1 */
 		isr_set_handler(INT_IRQ_TIMER, isr_timer);
@@ -183,9 +182,21 @@ void init_lapic(void)
 lapic_id_t lapic_get_id(void)
 {
 	if (lapic)
+	{
+		/* Best case scenario - init_lapic() has been called. */
 		return lapic[LAPIC_REG_ID] >> 24;
+	}
+	else if (mpt_header != NULL)
+	{
+		/* OK scenario - at least MP tables have been found. */
+		volatile lapic_reg_t *tmp_lapic = vm_map_walk(mpt_header->lapic_addr, true);
+		return tmp_lapic[LAPIC_REG_ID] >> 24;
+	}
 	else
-		return mpt_lapic[LAPIC_REG_ID] >> 24;
+	{
+		/* Worst case scenario - we don't know how to get the LAPIC ID. */
+		return -1;
+	}
 }
 
 void lapic_eoi(void)

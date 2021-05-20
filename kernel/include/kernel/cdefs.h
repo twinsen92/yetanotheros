@@ -14,5 +14,6 @@
 #define noreturn __attribute__((__noreturn__)) void
 #define __unused __attribute__((unused))
 #define packed_struct struct __attribute__((packed))
+#define packed_union union __attribute__((packed))
 
 #endif

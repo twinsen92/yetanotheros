@@ -27,6 +27,10 @@ noreturn generic_x86_init(void)
 	if (!mpt_scan())
 		kpanic("Did not find MP tables!");
 
+	/* Enumerate stuff in MP tables. */
+	mpt_enum_cpus();
+	mpt_enum_ioapics();
+
 	/* Some early CPU initialization. */
 	init_gdt();
 	cpu_set_boot_cpu();

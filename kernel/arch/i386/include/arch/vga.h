@@ -35,4 +35,13 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color)
 	return (uint16_t) uc | (uint16_t) color << 8;
 }
 
+/* Initialize vga_printf */
+void init_vga_printf(void);
+
+/* A printf to VGA buffer. Very reliable. */
+int vga_printf(const char * __restrict format, ...);
+
+/* A printf to VGA buffer. Very reliable. Version with va_list. */
+int va_vga_printf(const char * __restrict format, va_list parameters);
+
 #endif

@@ -6,15 +6,25 @@
 #include <kernel/cdefs.h>
 #include <arch/mpt_types.h>
 
-struct mpt_info
-{
-	vaddr_t lapic_base;
-};
-
 /* Scans the physical memory for the MP tables. Returns true if found. */
 bool mpt_scan(void);
 
-/* Gets the pointer to the parsed MP table info. */
-const struct mpt_info *mpt_get_info(void);
+/* Pointer to the MP floating point structure. */
+extern const struct mp_fps *mpt_fps;
+
+/* Pointer to the MP configuration header. */
+extern const struct mp_conf_header *mpt_header;
+
+/* Walk through the MP table entries. */
+void mpt_walk(void (*receiver)(const union mp_conf_entry *));
+
+/* Enumerate and add CPUs. */
+void mpt_enum_cpus(void);
+
+/* Enumerate and add IOAPICs. */
+void mpt_enum_ioapics(void);
+
+/* Dump all MP entries to kdprintf. */
+void mpt_dump(void);
 
 #endif
