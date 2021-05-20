@@ -37,6 +37,9 @@ struct x86_thread *x86_thread_allocate_empty(struct x86_proc *proc, const char *
 	set_name(thread, name);
 	thread->noarch.tid = atomic_fetch_add(&current_tid, 1);
 	thread->noarch.state = THREAD_NEW;
+	thread->noarch.sleep_since = 0;
+	thread->noarch.sleep_until = 0;
+	thread->noarch.lock = NULL;
 
 	/* Set the context. */
 	thread->cs = cs;

@@ -26,6 +26,10 @@ struct x86_thread
 	uint32_t ebp0; /* Bottom of the kernel stack pointer. 0 if using kernel selectors. */
 	vaddr_t stack0; /* Kernel stack top pointer. NULL if using kernel selectors. */
 
+	/* Interrupts state. These should be filled in by the scheduler. */
+	bool int_enabled; /* Interrupts state when cli_stack was 0. */
+	int cli_stack; /* Number of cli push operations. */
+
 	void (*tentry)(void); /* Entry point of the thread. This is what IRET will take the CPU to. */
 	void (*entry)(void *); /* Entry point the scheduler will call. */
 	void *cookie; /* The scheduler will pass this cookie to the entry point. */
