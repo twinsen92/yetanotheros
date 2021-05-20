@@ -53,7 +53,8 @@ noreturn generic_x86_init(void)
 	load_idt();
 	init_lapic();
 
-	init_ap_entry();
+	/* Init SMP stuff. */
+	init_smp();
 
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;

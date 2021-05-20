@@ -2,8 +2,10 @@
 
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
-#include <arch/memlayout.h>
+#include <arch/apic.h>
 #include <arch/cpu.h>
+#include <arch/interrupts.h>
+#include <arch/memlayout.h>
 #include <arch/vga.h>
 
 static const size_t VGA_WIDTH = 80;
@@ -298,11 +300,26 @@ int kdprintf(const char* restrict format, ...)
 	return written;
 }
 
+static void panic_enumerate(struct x86_cpu *cpu)
+{
+	/* Ignore inactive CPUs. */
+	if (atomic_load(&(cpu->active)) == false)
+		return;
+
+	/* If we have a second, active CPU, we most likely have initialized LAPIC. Send a panic IPI. */
+
+	lapic_ipi(cpu->lapic_id, INT_PANIC_IPI, 0);
+	lapic_ipi_wait();
+}
+
 noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 {
 	/* Stop interrupts. We're not nice with cpu.h, but at this point, who cares? This also helps
 	   in a situation where cpu.h has not been initialized yet. */
-   	cpu_force_cli();
+	cpu_force_cli();
+
+	/* Enumerate other CPUs and send panic IPIs to them. */
+	cpu_enumerate_other_cpus(panic_enumerate);
 
 	/* Reset to 0,0 and set an intimidating red colour. */
 	terminal_set_panic();

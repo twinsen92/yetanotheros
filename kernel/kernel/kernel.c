@@ -4,15 +4,17 @@
 #include <kernel/heap.h>
 #include <kernel/scheduler.h>
 
-noreturn kernel_main(void *arg)
+noreturn kernel_main(__unused void *arg)
 {
 	kdprintf("Hello, kernel World!\n");
-	for (int i = 0; i < 100; i++)
+	for (int i = 0; i < 20; i++)
 	{
 		kdprintf("A");
 		/* Test to see if paging_propagate_changes works. */
 		kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, 4096);
 		thread_sleep(1000);
 	}
+	/* Trigger a page fault to test panic IPI. */
+	*((char*)0) = 0;
 	while(1);
 }

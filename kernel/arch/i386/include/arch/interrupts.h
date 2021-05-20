@@ -18,6 +18,10 @@
 /* Interrupt vector for an IPI that commands a TLB flush due to page tables update. */
 #define INT_FLUSH_TLB_IPI	0x81
 
+/* IPI due to kernel panic. In response to this CPUs should disable interrupts and enter an infinite
+   loop.*/
+#define INT_PANIC_IPI		0x82
+
 #define ISR_MAX 256
 
 typedef uint32_t int_no_t;

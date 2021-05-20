@@ -8,6 +8,7 @@
 #include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/init.h>
+#include <arch/interrupts.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
 
@@ -27,8 +28,18 @@ extern symbol_t ap_entry_args; /* ap_entry.S */
 static paddr_t relocated_entry;
 static struct ap_entry_args *relocated_args;
 
-/* Initialize the AP entry stuff. This moves the AP entry code to the low memory region. */
-void init_ap_entry(void)
+static void ipi_panic_handler(__unused struct isr_frame *frame)
+{
+	cpu_force_cli();
+
+	while (1)
+		cpu_relax();
+
+	__builtin_unreachable();
+}
+
+/* Initialize SMP stuff. */
+void init_smp(void)
 {
 	void *original;
 	void *relocated;
@@ -42,6 +53,8 @@ void init_ap_entry(void)
 
 	relocated_entry = km_paddr(km_ap_entry_reloc(get_symbol_vaddr(ap_start)));
 	relocated_args = km_ap_entry_reloc(get_symbol_vaddr(ap_entry_args));
+
+	isr_set_handler(INT_PANIC_IPI, ipi_panic_handler);
 }
 
 static void start_ap(struct x86_cpu *ap)

@@ -15,6 +15,8 @@ lapic_id_t boot_lapic_id;
 static struct x86_cpu cpus[MAX_CPUS];
 static int nof_cpus = 0;
 
+#define verify_cpu(cpu) ((cpu)->magic == X86_CPU_MAGIC)
+
 /* Adds a CPU. */
 void cpu_add(lapic_id_t lapic_id)
 {
@@ -55,20 +57,20 @@ int get_nof_cpus(void)
 	return nof_cpus;
 }
 
-/* Enumerates other CPUs. Receiver is called with interrupts disabled. */
+/* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *))
 {
 	lapic_id_t cur_lapic_id;
 
-	push_no_interrupts();
+	/* This is dangerous with interrupts on. */
+	if (cpu_get_eflags() & EFLAGS_IF)
+		kpanic("cpu_current_or_null(): called with interrupts enabled");
 
 	cur_lapic_id = lapic_get_id();
 
 	for (int i = 0; i < nof_cpus; i++)
-		if (cpus[i].lapic_id != cur_lapic_id)
+		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id != cur_lapic_id)
 			receiver(&cpus[i]);
-
-	pop_no_interrupts();
 }
 
 /* Gets the current CPU object or NULL if un-initialized. */
@@ -89,7 +91,7 @@ struct x86_cpu *cpu_current_or_null(void)
 	lapic_id = lapic_get_id();
 
 	for (int i = 0; i < nof_cpus; i++)
-		if (cpus[i].lapic_id == lapic_id)
+		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id == lapic_id)
 			return &cpus[i];
 
 	return NULL;

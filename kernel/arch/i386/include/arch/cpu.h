@@ -49,7 +49,7 @@ void cpu_set_boot_cpu(void);
 /* Get the number of CPUs. */
 int get_nof_cpus(void);
 
-/* Enumerates other CPUs. Receiver is called with interrupts disabled. */
+/* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *));
 
 /* Gets the current CPU object or NULL if un-initialized. */
