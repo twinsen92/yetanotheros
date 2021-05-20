@@ -31,6 +31,10 @@ noreturn generic_x86_init(void)
 	init_gdt();
 	cpu_set_boot_cpu();
 
+	/* Initialize the registry for low-level interrupt handlers. */
+	init_idt();
+	init_isr();
+
 	/* Initialize shared subsystems. */
 	init_paging();
 	init_kernel_heap(&(vm_map[VM_DYNAMIC_REGION]));
@@ -42,8 +46,6 @@ noreturn generic_x86_init(void)
 	kfree(v2);
 	kfree(v3);
 
-	init_idt();
-	init_isr();
 	pic_disable();
 	init_global_scheduler();
 

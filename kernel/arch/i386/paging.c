@@ -70,6 +70,7 @@ static void unsafe_map(pde_t *const pd, vaddr_t v, paddr_t p, pflags_t flags)
 void init_paging(void)
 {
 	spinlock_create(&kp_spinlock, "kernel page tables write");
+	init_paging_ipi();
 }
 
 /* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
@@ -83,6 +84,7 @@ void kp_map(vaddr_t v, paddr_t p)
 {
 	paddr_t p_kernel_pd = vm_map_rev_walk(kernel_pd, true);
 	paddr_t prev_cr3;
+	pflags_t flags = vm_get_pflags(v);
 
 	spinlock_acquire(&kp_spinlock);
 
@@ -90,7 +92,9 @@ void kp_map(vaddr_t v, paddr_t p)
 	   table. Also we might need to be able to access pages that might be beneath user's virtual
 	   memory space. */
 	prev_cr3 = cpu_set_cr3(p_kernel_pd);
-	unsafe_map(kernel_pd, v, p, vm_get_pflags(v));
+	unsafe_map(kernel_pd, v, p, flags);
+	/* Notify other CPUs of these changes. */
+	paging_propagate_changes(p_kernel_pd, v, flags & PAGE_BIT_GLOBAL);
 	/* If we think we're not going to switch CR3, we should do INVLPG */
 	if (prev_cr3 == p_kernel_pd)
 		asm_invlpg(v);

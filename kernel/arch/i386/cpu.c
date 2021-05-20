@@ -55,12 +55,20 @@ int get_nof_cpus(void)
 	return nof_cpus;
 }
 
-/* Enumerates non-boot CPUs. */
-void cpu_enumerate_aps(void (*receiver)(struct x86_cpu *))
+/* Enumerates other CPUs. Receiver is called with interrupts disabled. */
+void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *))
 {
+	lapic_id_t cur_lapic_id;
+
+	push_no_interrupts();
+
+	cur_lapic_id = lapic_get_id();
+
 	for (int i = 0; i < nof_cpus; i++)
-		if (cpus[i].lapic_id != boot_lapic_id)
+		if (cpus[i].lapic_id != cur_lapic_id)
 			receiver(&cpus[i]);
+
+	pop_no_interrupts();
 }
 
 /* Gets the current CPU object or NULL if un-initialized. */
@@ -114,24 +122,6 @@ void cpu_set_active(bool flag)
 	pop_no_interrupts();
 }
 
-/* Broadcast the kvm_changed flag. */
-void cpu_kvm_changed(void)
-{
-	struct x86_cpu *cpu;
-
-	push_no_interrupts();
-
-	cpu = cpu_current();
-
-	/* Since the calling CPU called this function for a reason, we assume the CPU is awareof it's
-	   own changes. */
-	for (int i = 0; i < nof_cpus; i++)
-		if (cpus[i].num != cpu->num)
-			atomic_store(&(cpus[i].kvm_changed), true);
-
-	pop_no_interrupts();
-}
-
 /* Flush TLB on current CPU. */
 void cpu_flush_tlb(void)
 {
@@ -142,39 +132,9 @@ void cpu_flush_tlb(void)
 
 	cr3 = cpu_get_cr3();
 
-	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
-	if (cr3 == vm_map_rev_walk(kernel_pd, true))
-		atomic_store(&(cpu_current()->kvm_changed), false);
-
 	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
 
 	pop_no_interrupts();
-}
-
-/* Set CR3 on current, assumed CPU. */
-paddr_t cpu_set_cr3_with_cpu(struct x86_cpu *cpu, paddr_t cr3)
-{
-	paddr_t prev_cr3;
-
-	/* Need to turn off interrupts so that we're not rescheduled during this process. */
-	push_no_interrupts();
-
-	prev_cr3 = cpu_get_cr3();
-
-	/* Check if we're switching to the same CR3. */
-	if (cr3 == prev_cr3)
-		goto _cpu_set_cr3_redundant;
-
-	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
-	if (cr3 == vm_map_rev_walk(kernel_pd, true))
-		atomic_store(&(cpu->kvm_changed), false);
-
-	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
-
-_cpu_set_cr3_redundant:
-	pop_no_interrupts();
-
-	return prev_cr3;
 }
 
 /* Set CR3 on current CPU. */
@@ -190,10 +150,6 @@ paddr_t cpu_set_cr3(paddr_t cr3)
 	/* Check if we're switching to the same CR3. */
 	if (cr3 == prev_cr3)
 		goto _cpu_set_cr3_redundant;
-
-	/* If we're switching to kernel page tables, clear the kvm_changed flag. */
-	if (cr3 == vm_map_rev_walk(kernel_pd, true))
-		atomic_store(&(cpu_current()->kvm_changed), false);
 
 	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
 

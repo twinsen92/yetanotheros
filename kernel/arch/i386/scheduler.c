@@ -161,14 +161,14 @@ noreturn enter_scheduler(void)
 			cpu->thread = thread;
 
 			/* TODO: Reload TSS as well. */
-			cpu_set_cr3_with_cpu(cpu, proc->pd);
+			cpu_set_cr3(proc->pd);
 
 			thread->noarch.state = THREAD_RUNNING;
 
 			x86_thread_switch(cpu->scheduler, thread);
 
 			/* TODO: Switch back to kernel CR3. */
-			cpu_set_cr3_with_cpu(cpu, kernel_process.pd);
+			cpu_set_cr3(kernel_process.pd);
 
 			/* Thread is done running for now. It should have changed its state before coming
 			   back. */

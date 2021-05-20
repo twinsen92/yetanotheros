@@ -16,6 +16,10 @@ lapic_id_t lapic_get_id(void);
 
 void lapic_eoi(void);
 
+void lapic_ipi(lapic_id_t id, uint8_t vector, uint32_t flags);
+
+void lapic_ipi_wait(void);
+
 void lapic_start_ap(lapic_id_t id, uint16_t entry);
 
 /* I/O APIC */

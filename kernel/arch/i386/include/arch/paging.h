@@ -63,4 +63,15 @@ bool kp_lock_held(void);
 /* Map one physical page to one virtual page. */
 void kp_map(vaddr_t v, paddr_t p);
 
+/* Paging inter-processor communication. */
+
+/* Initializes the paging IPI subsystem. */
+void init_paging_ipi(void);
+
+/* Propagates changes in page tables to other CPUs.
+   pd - the parent page directory's physical address,
+   v - non-NULL if we only modified this particular page,
+   global - true if the changes contain the global bit. */
+void paging_propagate_changes(paddr_t pd, vaddr_t v, bool global);
+
 #endif

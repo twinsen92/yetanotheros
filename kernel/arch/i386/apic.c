@@ -170,10 +170,8 @@ void init_lapic(void)
 	lapicw(LAPIC_REG_EOI, 0);
 
 	/* Send an Init Level De-Assert to synchronise arbitration ID's. */
-	lapicw(LAPIC_REG_ICRHI, 0);
-	lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_BCAST | LAPIC_ICR_INIT | LAPIC_ICR_LEVEL);
-
-	while(lapic[LAPIC_REG_ICRLO] & LAPIC_ICR_DELIVS);
+	lapic_ipi(0, 0, LAPIC_ICR_BCAST | LAPIC_ICR_INIT | LAPIC_ICR_LEVEL);
+	lapic_ipi_wait();
 
 	/* Enable interrupts on the APIC (but not on the processor). */
 	lapicw(LAPIC_REG_TPR, 0);
@@ -195,6 +193,21 @@ void lapic_eoi(void)
 	lapicw(LAPIC_REG_EOI, 0);
 }
 
+#define lapic_icr_id(id)		((((uint32_t)(id)) << 24) & 0xff000000)
+#define lapic_icr_flags(flags)	(((uint32_t)(flags)) & 0x000fff00)
+
+void lapic_ipi(lapic_id_t id, uint8_t vector, uint32_t flags)
+{
+	lapicw(LAPIC_REG_ICRHI, lapic_icr_id(id));
+	lapicw(LAPIC_REG_ICRLO, lapic_icr_flags(flags) | (uint32_t)(vector & 0xff));
+}
+
+void lapic_ipi_wait(void)
+{
+	while (lapic[LAPIC_REG_ICRLO] & LAPIC_ICR_DELIVS)
+		cpu_relax();
+}
+
 void lapic_start_ap(lapic_id_t id, uint16_t entry)
 {
     uint16_t *vec;
@@ -211,10 +224,9 @@ void lapic_start_ap(lapic_id_t id, uint16_t entry)
 	vec[1] = entry >> 4;
 
 	/* "Universal startup algorithm." Send INIT (level-triggered) interrupt to reset other CPU. */
-	lapicw(LAPIC_REG_ICRHI, ((uint32_t)id) << 24);
-	lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL | LAPIC_ICR_ASSERT);
+	lapic_ipi(id, 0, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL | LAPIC_ICR_ASSERT);
 	pit_wait(200);
-	lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL);
+	lapic_ipi(id, 0, LAPIC_ICR_INIT | LAPIC_ICR_LEVEL);
 	pit_wait(10000);
 
 	/* Send startup IPI (twice!) to enter code. Regular hardware is supposed to only accept
@@ -222,8 +234,7 @@ void lapic_start_ap(lapic_id_t id, uint16_t entry)
 	   but it is part of the official Intel algorithm. */
 	for(int i = 0; i < 2; i++)
 	{
-		lapicw(LAPIC_REG_ICRHI, ((uint32_t)id) << 24);
-		lapicw(LAPIC_REG_ICRLO, LAPIC_ICR_STARTUP | (((uint32_t)entry) >> 12));
+		lapic_ipi(id, entry >> 12, LAPIC_ICR_STARTUP);
 		pit_wait(200);
 	}
 

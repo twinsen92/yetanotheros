@@ -70,5 +70,5 @@ static void start_ap(struct x86_cpu *ap)
 /* Enumerate APs and start them one by one. */
 void start_aps(void)
 {
-	cpu_enumerate_aps(start_ap);
+	cpu_enumerate_other_cpus(start_ap);
 }

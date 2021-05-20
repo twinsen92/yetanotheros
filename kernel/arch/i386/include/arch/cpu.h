@@ -33,9 +33,6 @@ struct x86_cpu
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
 	volatile struct tss tss;
 
-	/* This flag means the kernel's page tables changed and have to be reloaded. */
-	atomic_bool kvm_changed;
-
 	/* Scheduler fields. */
 	struct x86_thread *scheduler;
 	struct x86_thread *thread;
@@ -52,8 +49,8 @@ void cpu_set_boot_cpu(void);
 /* Get the number of CPUs. */
 int get_nof_cpus(void);
 
-/* Enumerates non-boot CPUs. */
-void cpu_enumerate_aps(void (*receiver)(struct x86_cpu *));
+/* Enumerates other CPUs. Receiver is called with interrupts disabled. */
+void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *));
 
 /* Gets the current CPU object or NULL if un-initialized. */
 struct x86_cpu *cpu_current_or_null(void);
@@ -67,15 +64,8 @@ struct x86_cpu *cpu_current(void);
 /* Set current CPU's active flag. */
 void cpu_set_active(bool flag);
 
-/* Broadcast the kvm_changed flag. */
-void cpu_kvm_changed(void);
-
 /* Flush TLB on current CPU. */
 void cpu_flush_tlb(void);
-
-/* Set CR3 on assumed, current CPU. Note that this function avoids unnecessary CR3 switches. Use
-   cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
-paddr_t cpu_set_cr3_with_cpu(struct x86_cpu *cpu, paddr_t cr3);
 
 /* Set CR3 on current CPU. Note that this function avoids unnecessary CR3 switches. Use
    cpu_flush_tlb() to perform flushes. Returns previous CR3 value. */
