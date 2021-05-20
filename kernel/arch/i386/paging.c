@@ -1,8 +1,7 @@
 /* paging.c - memory paging subsystem */
-
 #include <kernel/addr.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
-#include <kernel/spinlock.h>
 #include <arch/cpu.h>
 #include <arch/paging.h>
 #include <arch/palloc.h>
@@ -14,7 +13,7 @@ pde_t *const kernel_pd = get_symbol_vaddr(__kernel_pd);
 pte_t *const kernel_page_tables = get_symbol_vaddr(__kernel_page_tables);
 
 /* Kernel page tables lock. Acquire this to modify kernel page tables. */
-static struct spinlock kp_spinlock;
+static struct cpu_spinlock kp_spinlock;
 
 static vaddr_t unsafe_translate_or_panic(paddr_t p)
 {
@@ -69,14 +68,14 @@ static void unsafe_map(pde_t *const pd, vaddr_t v, paddr_t p, pflags_t flags)
 /* Initializes the interface of paging.h */
 void init_paging(void)
 {
-	spinlock_create(&kp_spinlock, "kernel page tables write");
+	cpu_spinlock_create(&kp_spinlock, "kernel page tables write");
 	init_paging_ipi();
 }
 
 /* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
 bool kp_lock_held(void)
 {
-	return spinlock_held(&kp_spinlock);
+	return cpu_spinlock_held(&kp_spinlock);
 }
 
 /* Map one physical page to one virtual page. */
@@ -86,7 +85,7 @@ void kp_map(vaddr_t v, paddr_t p)
 	paddr_t prev_cr3;
 	pflags_t flags = vm_get_pflags(v);
 
-	spinlock_acquire(&kp_spinlock);
+	cpu_spinlock_acquire(&kp_spinlock);
 
 	/* We need to use the kernel page tables, because we might call palloc to allocate a page
 	   table. Also we might need to be able to access pages that might be beneath user's virtual
@@ -100,5 +99,5 @@ void kp_map(vaddr_t v, paddr_t p)
 		asm_invlpg(v);
 	cpu_set_cr3(prev_cr3);
 
-	spinlock_release(&kp_spinlock);
+	cpu_spinlock_release(&kp_spinlock);
 }

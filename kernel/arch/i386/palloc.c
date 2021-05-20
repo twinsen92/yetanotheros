@@ -1,9 +1,9 @@
 /* palloc.c - physical memory allocator */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
-#include <kernel/spinlock.h>
 #include <kernel/utils.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
@@ -19,7 +19,7 @@ struct page
 };
 
 static bool initialized = false;
-static struct spinlock spinlock;
+static struct cpu_spinlock spinlock;
 static struct page *first_free_page;
 static const struct vm_region *vm_region;
 
@@ -47,7 +47,7 @@ void init_palloc(void)
 
 	first_free_page = NULL;
 	vm_region = vm_map + VM_PALLOC_REGION;
-	spinlock_create(&spinlock, "palloc");
+	cpu_spinlock_create(&spinlock, "palloc");
 	initialized = true;
 }
 
@@ -86,7 +86,7 @@ paddr_t palloc(void)
 	vaddr_t v = NULL;
 	paddr_t p = PHYS_NULL;
 
-	spinlock_acquire(&spinlock);
+	cpu_spinlock_acquire(&spinlock);
 
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
 	   to pages containing the user program. */
@@ -109,7 +109,7 @@ paddr_t palloc(void)
 	p = vtranslate(page);
 
 _palloc_exit:
-	spinlock_release(&spinlock);
+	cpu_spinlock_release(&spinlock);
 
 	/* Clear the page. */
 	if (v)
@@ -124,7 +124,7 @@ void pfree(paddr_t p)
 	if (!is_mappable(p))
 		kpanic("pfree(): attempted to free a page from outside of the palloc region");
 
-	spinlock_acquire(&spinlock);
+	cpu_spinlock_acquire(&spinlock);
 
 	/* We need this to be called with kernel page tables. Otherwise we might read and/or write
 	   to pages containing the user program. */
@@ -142,7 +142,7 @@ void pfree(paddr_t p)
 		first_free_page->prev = page;
 	first_free_page = page;
 
-	spinlock_release(&spinlock);
+	cpu_spinlock_release(&spinlock);
 }
 
 /* Translate physical address to virtual address.
@@ -158,5 +158,5 @@ vaddr_t ptranslate(paddr_t p)
 /* Check if we're holding the physical memory allocator's lock. This is used to avoid dead-locks. */
 bool palloc_lock_held(void)
 {
-	return spinlock_held(&spinlock);
+	return cpu_spinlock_held(&spinlock);
 }

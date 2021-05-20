@@ -1,24 +1,24 @@
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
-#include <kernel/spinlock.h>
 #include <arch/pit.h>
 #include <arch/portio.h>
 
-static struct spinlock pit_spinlock;
+static struct cpu_spinlock pit_spinlock;
 
 void init_pit(void)
 {
-	spinlock_create(&pit_spinlock, "PIT");
+	cpu_spinlock_create(&pit_spinlock, "PIT");
 }
 
 void pit_acquire(void)
 {
-	spinlock_acquire(&pit_spinlock);
+	cpu_spinlock_acquire(&pit_spinlock);
 }
 
 void pit_release(void)
 {
-	spinlock_release(&pit_spinlock);
+	cpu_spinlock_release(&pit_spinlock);
 }
 
 void pit_prepare_counter(unsigned int microseconds)

@@ -1,8 +1,8 @@
 /* paging_ipi.c - paging IPI communication subsystem */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/interrupts.h>
-#include <kernel/spinlock.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
@@ -10,7 +10,7 @@
 #include <arch/paging.h>
 
 /* IPI spinlock. While held, only the CPU holding the lock can issue INT_FLUSH_TLB_IPIs. */
-static struct spinlock ipi_spinlock;
+static struct cpu_spinlock ipi_spinlock;
 static paddr_t ipi_updated_pd;
 static vaddr_t ipi_updated_page;
 static bool ipi_global;
@@ -69,7 +69,7 @@ static void unsafe_propagate_to_cpu(struct x86_cpu *cpu)
 /* Initializes the paging IPI subsystem. */
 void init_paging_ipi(void)
 {
-	spinlock_create(&ipi_spinlock, "flush TLB IPI");
+	cpu_spinlock_create(&ipi_spinlock, "flush TLB IPI");
 	isr_set_handler(INT_FLUSH_TLB_IPI, ipi_flush_tlb_handler);
 }
 
@@ -79,12 +79,12 @@ void init_paging_ipi(void)
    global - true if the changes contain the global bit. */
 void paging_propagate_changes(paddr_t pd, vaddr_t v, bool global)
 {
-	spinlock_acquire(&ipi_spinlock);
+	cpu_spinlock_acquire(&ipi_spinlock);
 
 	ipi_updated_pd = pd;
 	ipi_updated_page = v;
 	ipi_global = global;
 	cpu_enumerate_other_cpus(unsafe_propagate_to_cpu);
 
-	spinlock_release(&ipi_spinlock);
+	cpu_spinlock_release(&ipi_spinlock);
 }

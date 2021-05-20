@@ -1,9 +1,9 @@
 /* heap.c - x86 heap implementation */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
-#include <kernel/spinlock.h>
 #include <arch/paging.h>
 #include <arch/palloc.h>
 #include <arch/memlayout.h>
@@ -39,7 +39,7 @@ struct heap_alloc
 static bool initialized = false;
 static const struct vm_region *heap_region;
 
-static struct spinlock spinlock; /* Mutex lock for the heap. */
+static struct cpu_spinlock spinlock; /* Mutex lock for the heap. */
 static size_t heap_size; /* Total heap size in bytes. */
 static size_t cur_size;
 static void *heap; /* Heap base address. */
@@ -135,7 +135,7 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 	if (!initialized)
 		kpanic("kalloc(): heap was not initialized");
 
-	spinlock_acquire(&spinlock);
+	cpu_spinlock_acquire(&spinlock);
 
 	/* TODO: Reuse freed allocations. */
 	/* TODO: Reuse heap lost due to alignment. */
@@ -174,7 +174,7 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 	/* We're almost done. Increase the current heap size. */
 	cur_size += offset + sizeof(struct heap_alloc) + size;
 
-	spinlock_release(&spinlock);
+	cpu_spinlock_release(&spinlock);
 
 	return v;
 }
@@ -190,7 +190,7 @@ void kfree(vaddr_t v)
 	if (!is_heap(v))
 		kpanic("kfree(): given address is not in heap region");
 
-	spinlock_acquire(&spinlock);
+	cpu_spinlock_acquire(&spinlock);
 
 	alloc = v - sizeof(struct heap_alloc);
 
@@ -204,7 +204,7 @@ void kfree(vaddr_t v)
 	if (alloc->next == NULL || alloc->next->free == true)
 		unsafe_truncate_heap();
 
-	spinlock_release(&spinlock);
+	cpu_spinlock_release(&spinlock);
 }
 
 paddr_t ktranslate(vaddr_t v)

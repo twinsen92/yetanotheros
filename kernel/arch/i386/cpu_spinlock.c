@@ -1,7 +1,8 @@
-/* spinlock.c - x86 spinlock implementation */
+/* cpu_spinlock.c - x86 CPU spinlock implementation */
+#include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
 #include <kernel/interrupts.h>
-#include <kernel/spinlock.h>
 #include <arch/cpu.h>
 
 /* Compile read-write barrier */
@@ -16,14 +17,14 @@ static inline int asm_xchg(void *ptr, int x)
 	return x;
 }
 
-void spinlock_create(struct spinlock *spinlock, const char *name)
+void cpu_spinlock_create(struct cpu_spinlock *spinlock, const char *name)
 {
 	spinlock->locked = 0;
 	spinlock->name = name;
-	spinlock->cpu = SPINLOCK_INVALID_CPU;
+	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
 }
 
-void spinlock_acquire(struct spinlock *spinlock)
+void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 {
 	struct x86_cpu *cpu;
 
@@ -39,20 +40,20 @@ void spinlock_acquire(struct spinlock *spinlock)
 	if (cpu)
 		spinlock->cpu = cpu->num;
 	else
-		spinlock->cpu = SPINLOCK_UNKNOWN_CPU;
+		spinlock->cpu = CPU_SPINLOCK_UNKNOWN_CPU;
 }
 
-void spinlock_release(struct spinlock *spinlock)
+void cpu_spinlock_release(struct cpu_spinlock *spinlock)
 {
-	if (spinlock->cpu == SPINLOCK_INVALID_CPU)
-		kpanic("spinlock_release(): called on an unheld spinlock");
+	if (spinlock->cpu == CPU_SPINLOCK_INVALID_CPU)
+		kpanic("cpu_spinlock_release(): called on an unheld spinlock");
 
 	/* We only check if we hold the lock if the holding CPU is a known one. This avoids issues in
 	   early kernel, where we might have not enumerated CPUs yet. */
-	if (spinlock->cpu != SPINLOCK_UNKNOWN_CPU && !spinlock_held(spinlock))
-		kpanic("spinlock_release(): called on an unheld spinlock");
+	if (spinlock->cpu != CPU_SPINLOCK_UNKNOWN_CPU && !cpu_spinlock_held(spinlock))
+		kpanic("cpu_spinlock_release(): called on an unheld spinlock");
 
-	spinlock->cpu = SPINLOCK_INVALID_CPU;
+	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
 
 	asm_barrier();
 
@@ -61,7 +62,7 @@ void spinlock_release(struct spinlock *spinlock)
 	pop_no_interrupts();
 }
 
-bool spinlock_held(struct spinlock *spinlock)
+bool cpu_spinlock_held(struct cpu_spinlock *spinlock)
 {
 	push_no_interrupts();
 	bool ret = spinlock->locked && spinlock->cpu == cpu_current()->num;
