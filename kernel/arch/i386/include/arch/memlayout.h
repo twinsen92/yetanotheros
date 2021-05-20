@@ -212,13 +212,13 @@ struct vm_region
 		true,																					\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
-	/* Memory mapped devices region. */															\
+	/* AP entry region. */																		\
 	map[6] = (struct vm_region) {																\
 		(vaddr_t)KM_PHYS_AP_ENTRY_BASE,															\
 		KM_PHYS_AP_ENTRY_BASE,																	\
 		KM_PHYS_AP_ENTRY_END - KM_PHYS_AP_ENTRY_BASE,											\
 		true,																					\
-		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
+		PAGE_BIT_RW																				\
 	};																							\
 }
 
