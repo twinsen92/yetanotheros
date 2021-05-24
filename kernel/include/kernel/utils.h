@@ -47,6 +47,11 @@ static inline char *kstrncpy(char *p1, const char *p2, size_t len)
 	return p1;
 }
 
+static inline void *kmemcpy(void *v1, const void *v2, size_t len)
+{
+	return (void*)kstrncpy(v1, v2, len);
+}
+
 static inline bool kmemcmp(const void *p1, const void *p2, size_t len)
 {
 	return kstrncmp(p1, p2, len);
@@ -59,5 +64,8 @@ static inline size_t kstrlen(const char *p)
 		result++;
 	return result;
 }
+
+#define kmin(x, y) ((x) > (y) ? (y) : (x))
+#define kmax(x, y) ((x) > (y) ? (x) : (y))
 
 #endif

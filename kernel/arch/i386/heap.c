@@ -179,6 +179,12 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 	return v;
 }
 
+vaddr_t krealloc(__unused vaddr_t v, __unused int mode, __unused uintptr_t alignment, __unused size_t size)
+{
+	kpanic("krealloc(): unimplemented");
+	return v;
+}
+
 void kfree(vaddr_t v)
 {
 	struct heap_alloc *alloc;

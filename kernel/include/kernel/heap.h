@@ -15,6 +15,7 @@
 #define HEAP_NO_ALIGN 1
 
 vaddr_t kalloc(int mode, uintptr_t alignment, size_t size);
+vaddr_t krealloc(vaddr_t v, int mode, uintptr_t alignment, size_t size);
 void kfree(vaddr_t v);
 paddr_t ktranslate(vaddr_t v);
 
