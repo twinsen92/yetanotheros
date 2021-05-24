@@ -1,8 +1,11 @@
 /* apic.c - handler for the Advanced Programmable Interrupt Controller */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
+#include <kernel/heap.h>
 #include <kernel/init.h>
+#include <kernel/queue.h>
 #include <arch/apic.h>
 #include <arch/apic_types.h>
 #include <arch/cmos.h>
@@ -252,9 +255,118 @@ void lapic_start_ap(lapic_id_t id, uint16_t entry)
 	pit_release();
 }
 
-/* Registers an I/O APIC */
-void ioapic_register(__unused paddr_t base, __unused uint8_t id, __unused uint8_t offset,
-	__unused uint8_t size)
-{
+/* IO APICs */
 
+struct ioapic
+{
+	ioapic_reg_t *addr;
+	uint8_t id;
+	uint8_t offset;
+	uint8_t size;
+
+	LIST_ENTRY(ioapic) pointers;
+};
+
+static LIST_HEAD(ioapic_list, ioapic) ioapics = LIST_HEAD_INITIALIZER(ioapics);
+static lapic_id_t ioapic_default_assignee;
+static struct cpu_spinlock ioapics_spinlock;
+
+#define raw_ioapic_read(ia, index)		\
+	(ia)->addr[IOAPIC_REGSEL] = index;	\
+	(ia)->addr[IOAPIC_REGWIN]
+
+#define raw_ioapic_write(ia, index, val)	\
+	(ia)->addr[IOAPIC_REGSEL] = index;		\
+	(ia)->addr[IOAPIC_REGWIN] = val
+
+static inline void ioapic_write(struct ioapic *ia, uint32_t flags, uint32_t off, uint8_t vec,
+	lapic_id_t lapic_id)
+{
+	raw_ioapic_write(ia, IOAPIC_REG_REDHI(off), ioapic_dest(lapic_id));
+	raw_ioapic_write(ia, IOAPIC_REG_REDLO(off), flags | ioapic_vector(vec));
+}
+
+static struct ioapic *ioapic_get(uint8_t irq)
+{
+	struct ioapic *ia;
+
+	LIST_FOREACH(ia, &ioapics, pointers)
+		if (ia->offset <= irq && irq - ia->offset < ia->size)
+			return ia;
+
+	return NULL;
+}
+
+/* Registers an I/O APIC */
+void ioapic_register(paddr_t base, uint8_t id, uint8_t offset, uint8_t size)
+{
+	struct ioapic *ia = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct ioapic));
+
+	ia->addr = vm_map_walk(base, true);
+	ia->id = id;
+	ia->offset = offset;
+	ia->size = size;
+
+	LIST_INSERT_HEAD(&ioapics, ia, pointers);
+}
+
+/* Initializes registered I/O APICs. */
+void init_ioapics(void)
+{
+	struct ioapic *ia;
+
+	kassert(is_yaos2_initialized() == false);
+
+	ioapic_default_assignee = cpu_current()->lapic_id;
+
+	LIST_FOREACH(ia, &ioapics, pointers)
+	{
+		/* Mask all interrupts on the IO APIC. */
+		for (int i = 0; i < ia->size; i++)
+			ioapic_write(ia, IOAPIC_INT_MASKED, i, 0, ioapic_default_assignee);
+	}
+
+	cpu_spinlock_create(&ioapics_spinlock, "I/O APICs spinlock");
+}
+
+/* Assigns interrupt vector to a given LAPIC (aka CPU). */
+void ioapic_assign(uint8_t vector, lapic_id_t lapic_id)
+{
+	kpanic("ioapic_assign(): not implemented");
+}
+
+/* Sets mask on given interrupt vector. */
+void ioapic_set_mask(uint8_t vector)
+{
+	struct ioapic *ia;
+	uint8_t irq;
+
+	cpu_spinlock_acquire(&ioapics_spinlock);
+
+	irq = vector - INT_IRQ0;
+	ia = ioapic_get(irq);
+
+	kassert(ia);
+
+	ioapic_write(ia, IOAPIC_INT_MASKED, irq - ia->offset, 0, ioapic_default_assignee);
+
+	cpu_spinlock_release(&ioapics_spinlock);
+}
+
+/* Clears mask on given interrupt vector. */
+void ioapic_clear_mask(uint8_t vector)
+{
+	struct ioapic *ia;
+	uint8_t irq;
+
+	cpu_spinlock_acquire(&ioapics_spinlock);
+
+	irq = vector - INT_IRQ0;
+	ia = ioapic_get(irq);
+
+	kassert(ia);
+
+	ioapic_write(ia, 0, irq - ia->offset, vector, ioapic_default_assignee);
+
+	cpu_spinlock_release(&ioapics_spinlock);
 }

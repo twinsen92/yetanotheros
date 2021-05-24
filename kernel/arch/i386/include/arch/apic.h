@@ -27,4 +27,16 @@ void lapic_start_ap(lapic_id_t id, uint16_t entry);
 /* Registers an I/O APIC */
 void ioapic_register(paddr_t base, uint8_t id, uint8_t offset, uint8_t size);
 
+/* Initializes registered I/O APICs. Current CPU will be default assignee for interrupts. */
+void init_ioapics(void);
+
+/* Assigns interrupt vector to a given LAPIC (aka CPU). */
+void ioapic_assign(uint8_t vector, lapic_id_t lapic_id);
+
+/* Sets mask on given interrupt vector. */
+void ioapic_set_mask(uint8_t vector);
+
+/* Clears mask on given interrupt vector. */
+void ioapic_clear_mask(uint8_t vector);
+
 #endif

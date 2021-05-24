@@ -29,7 +29,6 @@ noreturn generic_x86_init(void)
 
 	/* Enumerate stuff in MP tables. */
 	mpt_enum_cpus();
-	mpt_enum_ioapics();
 
 	/* Some early CPU initialization. */
 	init_gdt();
@@ -59,6 +58,10 @@ noreturn generic_x86_init(void)
 
 	/* Init SMP stuff. */
 	init_smp();
+
+	/* Init x86-specific devices. */
+	mpt_enum_ioapics();
+	init_ioapics();
 
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;

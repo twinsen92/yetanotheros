@@ -43,4 +43,24 @@ typedef uint32_t lapic_reg_t;
 #define LAPIC_ENABLE			0x00000100   // Unit Enable
 #define LAPIC_MASKED			0x00010000   // Interrupt masked
 
+/* I/O APIC constants and helper functions */
+
+typedef uint32_t ioapic_reg_t;
+
+#define IOAPIC_REGSEL         0
+#define IOAPIC_REGWIN         (0x10 / sizeof (ioapic_reg_t))
+
+#define IOAPIC_REG_ID         0x00
+#define IOAPIC_REG_VER        0x01
+#define IOAPIC_REG_ARB        0x02
+#define IOAPIC_REG_REDLO(n)   (0x10 + 2 * (n))
+#define IOAPIC_REG_REDHI(n)   (0x11 + 2 * (n))
+
+#define IOAPIC_INT_MASKED     0x10000
+#define IOAPIC_INT_EXTINT     0x700
+#define IOAPIC_INT_NMI        0x400
+
+#define ioapic_dest(x)        ((((ioapic_reg_t)(x)) & 0xff) << 24)
+#define ioapic_vector(x)      ((ioapic_reg_t)(x) & 0xff)
+
 #endif
