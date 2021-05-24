@@ -39,7 +39,7 @@ struct x86_thread *x86_thread_allocate_empty(struct x86_proc *proc, const char *
 	thread->noarch.state = THREAD_NEW;
 	thread->noarch.sleep_since = 0;
 	thread->noarch.sleep_until = 0;
-	thread->noarch.lock = NULL;
+	thread->noarch.cond = NULL;
 
 	/* Set the context. */
 	thread->cs = cs;

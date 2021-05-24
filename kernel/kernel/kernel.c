@@ -6,16 +6,16 @@
 #include <kernel/scheduler.h>
 #include <kernel/thread.h>
 
-static struct thread_lock lock;
+static struct thread_mutex lock;
 
 static void kthread_1(__unused void *arg)
 {
 	while (1)
 	{
-		thread_lock_acquire(&lock);
+		thread_mutex_acquire(&lock);
 		kdprintf("B");
-		thread_sleep(10000);
-		thread_lock_release(&lock);
+		thread_sleep(2000);
+		thread_mutex_release(&lock);
 		thread_sleep(200);
 	}
 }
@@ -24,9 +24,9 @@ static void kthread_2(__unused void *arg)
 {
 	while (1)
 	{
-		thread_lock_acquire(&lock);
+		thread_mutex_acquire(&lock);
 		kdprintf("C");
-		thread_lock_release(&lock);
+		thread_mutex_release(&lock);
 		thread_sleep(50);
 	}
 }
@@ -35,7 +35,7 @@ noreturn kernel_main(__unused void *arg)
 {
 	kdprintf("Hello, kernel World!\n");
 
-	thread_lock_create(&lock);
+	thread_mutex_create(&lock);
 	thread_create(PID_KERNEL, kthread_1, NULL);
 	thread_create(PID_KERNEL, kthread_2, NULL);
 

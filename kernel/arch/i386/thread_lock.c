@@ -1,4 +1,4 @@
-/* thread_lock.c - x86 implementation of thread_lock */
+/* thread_mutex.c - x86 implementation of thread_mutex */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/interrupts.h>
@@ -9,64 +9,94 @@
 
 #define asm_barrier() asm volatile ("" : : : "memory")
 
-void thread_lock_create(struct thread_lock *lock)
+void thread_mutex_create(struct thread_mutex *mutex)
 {
-	atomic_store(&(lock->locked), false);
-	lock->tid = TID_INVALID;
+	atomic_store(&(mutex->locked), false);
+	mutex->tid = TID_INVALID;
+	thread_cond_create(&(mutex->wait_cond));
 }
 
-void thread_lock_acquire(struct thread_lock *lock)
+void thread_mutex_acquire(struct thread_mutex *mutex)
 {
-	/* We acquire the global scheduler lock. This prevents situations where thread_notify might
-	   happen between the exchange and thread_wait_lock(). It doesn't make much of a difference in
-	   terms of performance because thread_wait_lock() would have had to acquire the lock to put the
-	   thread in THREAD_BLOCKED state anyway. This also disables interrupts/preemption, of course. */
-	sched_global_acquire();
+	struct x86_thread *thread;
 
-	/* Check in a loop if we have locked the lock with an atomic exchange. If not, go to sleep and
-	   reschedule. The thread will be awakened with thread_notify by the current holder. */
-	while (atomic_exchange(&(lock->locked), true))
-		thread_wait_lock(lock);
-
-	asm_barrier();
-
-	lock->tid = get_current_thread()->noarch.tid;
-
-	sched_global_release();
-}
-
-void thread_lock_release(struct thread_lock *lock)
-{
-	/* We do not want to get rescheduled while accessing the current thread object and modifying
-	   the lock object. */
+	/* We don't want to get rescheduled when using get_current_thread() and modifying the mutex
+	  object. */
 	push_no_interrupts();
 
-	if (lock->tid == TID_INVALID)
-		kpanic("thread_lock_release(): called on an unheld lock");
+	thread = get_current_thread();
 
-	if (lock->tid != TID_INVALID && !thread_lock_held(lock))
-		kpanic("thread_lock_release(): called on an unheld lock");
+	if (thread == NULL)
+		kpanic("thread_mutex_acquire(): no thread running");
 
-	lock->tid = TID_INVALID;
+	/* Check in a loop if we have locked the mutex with an atomic exchange. If not, go into blocked
+	   state. Another thread calling release on this mutex will notify and wake us up. */
+	while (atomic_exchange(&(mutex->locked), true))
+		sched_thread_wait(&(mutex->wait_cond), NULL);
 
 	asm_barrier();
 
-	/* Actually release the lock. */
-	atomic_store(&(lock->locked), false);
+	mutex->tid = thread->noarch.tid;
+
+	pop_no_interrupts();
+}
+
+void thread_mutex_release(struct thread_mutex *mutex)
+{
+	/* We do not want to get rescheduled while accessing the current thread object and modifying
+	   the mutex object. */
+	push_no_interrupts();
+
+	if (mutex->tid == TID_INVALID)
+		kpanic("thread_mutex_release(): called on an unheld mutex");
+
+	if (mutex->tid != TID_INVALID && !thread_mutex_held(mutex))
+		kpanic("thread_mutex_release(): called on an unheld mutex");
+
+	mutex->tid = TID_INVALID;
+
+	asm_barrier();
+
+	/* Actually release the mutex. */
+	atomic_store(&(mutex->locked), false);
+
+	/* Notify a thread waiting on the internal conditon. */
+	sched_thread_notify_one(&(mutex->wait_cond));
 
 	/* Continue with preemption enabled. */
 	pop_no_interrupts();
-
-	/* Lazily wake up another thread, which could be waiting at the lock. We do not really care that
-	   it happens in preemptible part. If this leads to multiple threads being woken up to acquire
-	   the lock, then so be it. */
-	thread_notify(lock);
 }
 
-bool thread_lock_held(struct thread_lock *lock)
+bool thread_mutex_held(struct thread_mutex *mutex)
 {
+	bool ret;
+	struct x86_thread *thread;
+
 	push_no_interrupts();
-	bool ret = atomic_load(&(lock->locked)) && lock->tid == get_current_thread()->noarch.tid;
+
+	thread = get_current_thread();
+
+	if (thread == NULL)
+		kpanic("thread_mutex_held(): no thread running");
+
+	ret = atomic_load(&(mutex->locked)) && mutex->tid == get_current_thread()->noarch.tid;
+
 	pop_no_interrupts();
+
 	return ret;
+}
+
+void thread_cond_create(struct thread_cond *cond)
+{
+	atomic_store(&(cond->num_waiting), 0);
+}
+
+void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex)
+{
+	sched_thread_wait(cond, mutex);
+}
+
+void thread_cond_notify(struct thread_cond *cond)
+{
+	sched_thread_notify_one(cond);
 }

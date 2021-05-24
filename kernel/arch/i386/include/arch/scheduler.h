@@ -23,11 +23,12 @@ noreturn enter_scheduler(void);
 /* Gets the object of the thread currently running on the current CPU. */
 struct x86_thread *get_current_thread(void);
 
-/* Make the current thread wait on the given lock. */
-void thread_wait_lock(struct thread_lock *lock);
+/* Make the current thread wait on the given condition. Optionally, a mutex can be released and
+   re-acquired. */
+void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex);
 
-/* Notify a thread waiting on the given lock that it is unlocked. Puts the thread at the beginning
+/* Notify a thread waiting on the given cond that it is unlocked. Puts the thread at the beginning
    of the thread queue. */
-void thread_notify(struct thread_lock *lock);
+void sched_thread_notify_one(struct thread_cond *cond);
 
 #endif

@@ -17,7 +17,7 @@
 #define THREAD_EXITED		6 /* Thread has exited. */
 
 typedef unsigned int tid_t;
-struct thread_lock;
+struct thread_mutex;
 
 struct thread
 {
@@ -25,24 +25,35 @@ struct thread
 	int state; /* Current thread state. */
 	ticks_t sleep_since; /* Sleep start tick, if state == THREAD_SLEEPING. */
 	ticks_t sleep_until; /* Sleep end tick, if state == THREAD_SLEEPING. */
-	struct thread_lock *lock; /* Lock this thread is waiting on, if state == THREAD_BLOCKED. */
+	struct thread_cond *cond; /* Condition this thread is waiting on, if state == THREAD_BLOCKED. */
 	char name[32]; /* Name of the thread. */
 };
 
-/* thread_lock - a preemtible lock that puts waiting threads into THREAD_BLOCKED state */
-
-struct thread_lock
+/* thread_cond - a preemtible condition that puts waiting threads into THREAD_BLOCKED state */
+struct thread_cond
 {
-	/* Is the lock acquired? */
+	atomic_int num_waiting;
+};
+
+/* thread_mutex - a preemtible mutex that puts waiting threads into THREAD_BLOCKED state */
+struct thread_mutex
+{
+	/* Is the mutex acquired? */
 	atomic_bool locked;
 
-	/* Holder of the lock. */
+	struct thread_cond wait_cond;
+
+	/* Holder of the mutex. */
 	tid_t tid;
 };
 
-void thread_lock_create(struct thread_lock *lock);
-void thread_lock_acquire(struct thread_lock *lock);
-void thread_lock_release(struct thread_lock *lock);
-bool thread_lock_held(struct thread_lock *lock);
+void thread_mutex_create(struct thread_mutex *mutex);
+void thread_mutex_acquire(struct thread_mutex *mutex);
+void thread_mutex_release(struct thread_mutex *mutex);
+bool thread_mutex_held(struct thread_mutex *mutex);
+
+void thread_cond_create(struct thread_cond *cond);
+void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex);
+void thread_cond_notify(struct thread_cond *cond);
 
 #endif

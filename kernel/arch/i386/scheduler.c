@@ -256,25 +256,39 @@ static void reschedule(void)
 	x86_thread_switch(thread, cpu_current()->scheduler);
 }
 
-/* Make the current thread wait on the given lock. */
-void thread_wait_lock(struct thread_lock *lock)
+/* Make the current thread wait on the given condition. Optionally, a mutex can be released and
+   re-acquired. */
+void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 {
 	struct x86_thread *thread;
 
-	/* We expect the caller to hold the global scheduler lock. */
-	if(!cpu_spinlock_held(&global_scheduler_lock))
-		kpanic("thread_wait_lock(): global lock not held");
+	cpu_spinlock_acquire(&global_scheduler_lock);
+
+	/* We release the mutex while holding the global scheduler lock. This way we can be sure no
+	   other thread acquires the mutex between release and reschedule() */
+	if (mutex)
+		thread_mutex_release(mutex);
 
 	thread = get_current_thread();
+	atomic_fetch_add(&(cond->num_waiting), 1);
 	thread->noarch.state = THREAD_BLOCKED;
-	thread->noarch.lock = lock;
+	thread->noarch.cond = cond;
 	reschedule();
-	thread->noarch.lock = NULL;
+	atomic_fetch_sub(&(cond->num_waiting), 1);
+	thread->noarch.cond = NULL;
+
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	/* We wait on the mutex outside of the section where we hold the global scheduler lock. This
+	   way we can avoid getting stuck on acquire and never being able to schedule the thread
+	   currently holding it. */
+	if (mutex)
+		thread_mutex_acquire(mutex);
 }
 
-/* Notify a thread waiting on the given lock that it is unlocked. Puts the thread at the beginning
+/* Notify a thread waiting on the given mutex that it is unlocked. Puts the thread at the beginning
    of the thread queue. */
-void thread_notify(struct thread_lock *lock)
+void sched_thread_notify_one(struct thread_cond *cond)
 {
 	struct x86_proc *proc;
 	struct x86_thread *thread;
@@ -285,10 +299,9 @@ void thread_notify(struct thread_lock *lock)
 	{
 		LIST_FOREACH(thread, &(proc->threads), lptrs)
 		{
-			if (thread->noarch.lock == lock)
+			if (thread->noarch.cond == cond && thread->noarch.state == THREAD_BLOCKED)
 			{
 				thread->noarch.state = THREAD_READY;
-				thread->noarch.lock = NULL;
 				STAILQ_INSERT_HEAD(&queue, thread, sqptrs);
 			}
 		}
