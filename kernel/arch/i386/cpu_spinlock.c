@@ -24,14 +24,41 @@ void cpu_spinlock_create(struct cpu_spinlock *spinlock, const char *name)
 	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
 }
 
+static inline void spin_interruptible(struct cpu_spinlock *spinlock)
+{
+	while (1)
+	{
+		cpu_force_cli();
+
+		if (asm_xchg(&(spinlock->locked), 1) == 0)
+			break;
+
+		cpu_force_sti();
+
+		cpu_relax();
+	}
+}
+
+static inline void spin_uninterruptible(struct cpu_spinlock *spinlock)
+{
+	while (asm_xchg(&(spinlock->locked), 1))
+		cpu_relax();
+}
+
 void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 {
 	struct x86_cpu *cpu;
+	bool had_interrupts_enabled = cpu_get_eflags() & EFLAGS_IF;
 
 	push_no_interrupts();
 
-	while (asm_xchg(&(spinlock->locked), 1))
-		cpu_relax();
+	/* If interrupts were enabled before acquire was called, we want to spin with interrupts
+	   enabled, so that we can get IPIs and be preempted. Interrupts will be disabled when
+	   we acquire the lock. */
+	if (had_interrupts_enabled)
+		spin_interruptible(spinlock);
+	else
+		spin_uninterruptible(spinlock);
 
 	asm_barrier();
 
