@@ -22,6 +22,9 @@ struct x86_cpu
 	atomic_bool active;
 	lapic_id_t lapic_id;
 
+	vaddr_t stack_top;
+	size_t stack_size;
+
 	/* Interrupts */
 
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
@@ -34,6 +37,7 @@ struct x86_cpu
 	volatile struct tss tss;
 
 	/* Scheduler fields. */
+	struct x86_thread scheduler_thread;
 	struct x86_thread *scheduler;
 	struct x86_thread *thread;
 };
@@ -45,9 +49,6 @@ void cpu_add(lapic_id_t lapic_id);
 
 /* Sets current CPU as the boot CPU. This sets boot_lapic_id. */
 void cpu_set_boot_cpu(void);
-
-/* Get the number of CPUs. */
-int get_nof_cpus(void);
 
 /* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *));

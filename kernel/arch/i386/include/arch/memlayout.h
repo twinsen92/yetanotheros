@@ -29,6 +29,9 @@
 #define KM_PHYS_AP_ENTRY_BASE		((paddr_t)(ASM_KM_PHYS_AP_ENTRY_BASE))
 
 /* Linker symbols. */
+extern symbol_t __boot_stack_top;
+extern symbol_t __boot_stack_bottom;
+
 extern symbol_t __kernel_virtual_offset;
 extern symbol_t __kernel_low_begin;
 extern symbol_t __kernel_low_end;

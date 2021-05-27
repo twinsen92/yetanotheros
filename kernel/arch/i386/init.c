@@ -1,7 +1,6 @@
 /* init.c - generic x86 initialization */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
-#include <kernel/heap.h>
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
@@ -19,8 +18,6 @@
 #include <arch/scheduler.h>
 #include <arch/smp.h>
 #include <arch/thread.h>
-
-static noreturn cpu_scheduler_entry(void);
 
 noreturn generic_x86_init(void)
 {
@@ -42,13 +39,6 @@ noreturn generic_x86_init(void)
 	init_paging();
 	init_kernel_heap(&(vm_map[VM_DYNAMIC_REGION]));
 
-	/* Test the kernel heap. TODO: Remove. */
-	kalloc(HEAP_NORMAL, 16, 20);
-	vaddr_t v2 = kalloc(HEAP_NORMAL, 1, 12345);
-	vaddr_t v3 = kalloc(HEAP_NORMAL, 1, 12345);
-	kfree(v2);
-	kfree(v3);
-
 	pic_disable();
 	init_global_scheduler();
 
@@ -63,26 +53,25 @@ noreturn generic_x86_init(void)
 	mpt_enum_ioapics();
 	init_ioapics();
 
+	thread_create(PID_KERNEL, kernel_main, NULL);
+
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;
-
-	thread_create(PID_KERNEL, kernel_main, NULL);
+	/* This CPU is now "active". */
+	cpu_set_active(true);
 
 	start_aps();
 
-	cpu_scheduler_entry();
+	enter_scheduler();
 }
 
 noreturn cpu_entry(void)
 {
+	/* Initialize some basic x86 stuff. */
 	init_gdt();
 	load_idt();
 	init_lapic();
-	cpu_scheduler_entry();
-}
-
-static noreturn cpu_scheduler_entry(void)
-{
+	/* Set ourselves as active and enter scheduler. */
 	cpu_set_active(true);
 	enter_scheduler();
 }

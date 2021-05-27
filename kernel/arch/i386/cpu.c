@@ -1,10 +1,13 @@
 /* cpu.c - holder of the cpu information */
+#include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
 #include <kernel/interrupts.h>
+#include <kernel/utils.h>
 #include <arch/apic.h>
 #include <arch/cpu.h>
+#include <arch/memlayout.h>
 #include <arch/paging.h>
 
 #define MAX_CPUS 8
@@ -13,7 +16,8 @@
 /* We only have one cpu right now. */
 lapic_id_t boot_lapic_id;
 static struct x86_cpu cpus[MAX_CPUS];
-static int nof_cpus = 0;
+static unsigned int nof_cpus = 0;
+static atomic_uint nof_active_cpus = 0;
 
 #define verify_cpu(cpu) ((cpu)->magic == X86_CPU_MAGIC)
 
@@ -30,13 +34,17 @@ void cpu_add(lapic_id_t lapic_id)
 	cpus[nof_cpus].num = nof_cpus;
 	cpus[nof_cpus].active = false;
 	cpus[nof_cpus].lapic_id = lapic_id;
-	/* TODO: We assume that the CPU starts with interrupts disabled here. Is that correct? */
+
+	cpus[nof_cpus].stack_top = get_symbol_vaddr(__boot_stack_top);
+	cpus[nof_cpus].stack_size = get_symbol_vaddr(__boot_stack_top) - get_symbol_vaddr(__boot_stack_bottom);
+
 	cpus[nof_cpus].int_enabled = false;
 	cpus[nof_cpus].cli_stack = 0;
 
 	if (cpu_has_cpuid() == false)
 		kpanic("init_cpu(): CPU does not support CPUID");
 
+	kmemset(&(cpus[nof_cpus].scheduler_thread), 0, sizeof(cpus[nof_cpus].scheduler_thread));
 	cpus[nof_cpus].scheduler = NULL;
 	cpus[nof_cpus].thread = NULL;
 
@@ -52,9 +60,15 @@ void cpu_set_boot_cpu(void)
 }
 
 /* Get the number of CPUs. */
-int get_nof_cpus(void)
+unsigned int get_nof_cpus(void)
 {
 	return nof_cpus;
+}
+
+/* Get the number of active CPUs. */
+unsigned int get_nof_active_cpus(void)
+{
+	return atomic_load(&nof_active_cpus);
 }
 
 /* Enumerates other CPUs. Call with interrupts disabled. */
@@ -120,8 +134,11 @@ void cpu_set_active(bool flag)
 
 	push_no_interrupts();
 	cpu = cpu_current();
+	if (atomic_load(&(cpu->active)) == false)
+		atomic_fetch_add(&nof_active_cpus, 1);
 	atomic_store(&(cpu->active), flag);
 	pop_no_interrupts();
+
 }
 
 /* Flush TLB on current CPU. */

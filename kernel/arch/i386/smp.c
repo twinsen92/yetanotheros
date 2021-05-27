@@ -38,6 +38,12 @@ static void ipi_panic_handler(__unused struct isr_frame *frame)
 	__builtin_unreachable();
 }
 
+static void setup_ap(struct x86_cpu *ap)
+{
+	ap->stack_top = kalloc(HEAP_NORMAL, 16, 4096);
+	ap->stack_size = 4096;
+}
+
 /* Initialize SMP stuff. */
 void init_smp(void)
 {
@@ -54,6 +60,9 @@ void init_smp(void)
 	relocated_entry = km_paddr(km_ap_entry_reloc(get_symbol_vaddr(ap_start)));
 	relocated_args = km_ap_entry_reloc(get_symbol_vaddr(ap_entry_args));
 
+	/* Allocate stacks for APs. */
+	cpu_enumerate_other_cpus(setup_ap);
+
 	isr_set_handler(INT_PANIC_IPI, ipi_panic_handler);
 }
 
@@ -61,15 +70,12 @@ static void start_ap(struct x86_cpu *ap)
 {
 	/* Start APs one by one. */
 
-	/* Allocate a stack for the main (later scheduler) thread. */
-	vaddr_t stack = kalloc(HEAP_NORMAL, 16, 4096);
-
 	/* Make sure to fix this place for long mode... */
 	kassert(sizeof(vaddr32_t) == sizeof(vaddr_t));
 
 	/* Fill out the args. */
-	relocated_args->stack_top = (vaddr32_t) stack;
-	relocated_args->stack_bottom = (vaddr32_t) stack + 4096;
+	relocated_args->stack_top = (vaddr32_t) ap->stack_top;
+	relocated_args->stack_bottom = (vaddr32_t) ap->stack_top + 4096;
 	relocated_args->page_directory = (paddr32_t) vm_map_rev_walk(kernel_pd, true);
 	relocated_args->entry = (vaddr32_t) cpu_entry;
 

@@ -1,9 +1,11 @@
 /* heap.c - x86 heap implementation */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
+#include <arch/cpu.h>
 #include <arch/paging.h>
 #include <arch/palloc.h>
 #include <arch/memlayout.h>
@@ -56,10 +58,30 @@ static inline bool unsafe_check(struct heap_alloc *alloc)
 	return alloc->magic1 == HEAP_ALLOC_MAGIC && alloc->magic2 == HEAP_ALLOC_MAGIC;
 }
 
+static void unsafe_check_all(void)
+{
+	struct heap_alloc *p;
+
+	p = first;
+
+	while (p)
+	{
+		kassert(unsafe_check(p));
+		p = p->next;
+	}
+
+	p = last;
+
+	while (p)
+	{
+		kassert(unsafe_check(p));
+		p = p->next;
+	}
+}
+
 static void unsafe_grow_heap(size_t new_size)
 {
-	vaddr_t v;
-	int pages_needed;
+	vaddr_t v, vto;
 
 	/* TODO: Allow kernel heap to free memory. */
 	kassert(new_size >= heap_size);
@@ -76,15 +98,16 @@ static void unsafe_grow_heap(size_t new_size)
 	if (kp_lock_held ())
 		kpanic("holding kernel page tables write lock while using the kernel heap allocator");
 
-	if (mask_to_page(heap + heap_size) != align_to_next_page(heap + new_size))
+	if (align_to_next_page(heap + heap_size) != align_to_next_page(heap + new_size))
 	{
 		/* We have to add more pages of memory. */
-		v = (vaddr_t)mask_to_page(heap + heap_size);
-		pages_needed = (align_to_next_page(heap + new_size) - mask_to_page(v)) / PAGE_SIZE;
+		v = (vaddr_t)align_to_next_page(heap + heap_size);
+		vto = (vaddr_t)align_to_next_page(heap + new_size);
 
-		for (int i = 0; i < pages_needed; i++)
+		while (v < vto)
 		{
-			kp_map(v + (i * PAGE_SIZE), palloc());
+			kp_map(v, palloc());
+			v += PAGE_SIZE;
 		}
 	}
 
@@ -128,6 +151,12 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 	struct heap_alloc *alloc;
 	vaddr_t v;
 
+	/* If we try to acquire the heap spinlock with interrupts off, we might run into a deadlock
+	   where one CPU is waiting on the lock with interrupts off and the other is waiting to deliver
+	   a flush TLB IPI. */
+	if ((cpu_get_eflags() & EFLAGS_IF) == 0 && get_nof_active_cpus() > 1)
+		kpanic("kalloc(): called with interrupts off");
+
 	if (mode == HEAP_CONTINUOUS)
 		kpanic("kalloc(): HEAP_CONTINUOUS unimplemented");
 
@@ -139,6 +168,10 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 
 	/* TODO: Reuse freed allocations. */
 	/* TODO: Reuse heap lost due to alignment. */
+
+#ifdef KERNEL_DEBUG
+	unsafe_check_all();
+#endif
 
 	/* Calculate the next possible pointer with such alignment. */
 	unaligned = (uintptr_t)(heap + cur_size + sizeof(struct heap_alloc));
@@ -173,6 +206,10 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 
 	/* We're almost done. Increase the current heap size. */
 	cur_size += offset + sizeof(struct heap_alloc) + size;
+
+#ifdef KERNEL_DEBUG
+	unsafe_check_all();
+#endif
 
 	cpu_spinlock_release(&spinlock);
 

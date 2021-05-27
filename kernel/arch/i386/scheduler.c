@@ -1,5 +1,6 @@
 /* proc.c - x86 process structures and process list manager */
 #include <kernel/cdefs.h>
+#include <kernel/cpu_checkpoint.h>
 #include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
@@ -17,6 +18,9 @@
 
 /* Scheduler lock. This applies to all structures used by the scheduler on all CPUs. */
 static struct cpu_spinlock global_scheduler_lock;
+
+/* Scheduler checkpoint used to ensure all CPUs enter the scheduler at the same time. */
+static struct cpu_checkpoint scheduler_checkpoint;
 
 /* Process list. */
 static struct x86_proc kernel_process;
@@ -54,9 +58,9 @@ static void thread_destroy(struct x86_thread *thread)
 	/* TODO: We might have to switch to process' CR3 here. */
 	proc = thread->parent;
 	LIST_REMOVE(thread, lptrs);
-	/* thread->stack belongs to us */
+	/* thread->stack also belongs to us */
 	kfree(thread->stack);
-	x86_thread_free(thread);
+	kfree(thread);
 
 	if (LIST_EMPTY(&(proc->threads)))
 	{
@@ -74,6 +78,8 @@ static void thread_destroy(struct x86_thread *thread)
 void init_global_scheduler(void)
 {
 	cpu_spinlock_create(&global_scheduler_lock, "global scheduler");
+
+	cpu_checkpoint_create(&scheduler_checkpoint);
 
 	kernel_process.pd = vm_map_rev_walk(kernel_pd, true);
 	LIST_INIT(&(kernel_process.threads));
@@ -129,8 +135,9 @@ noreturn enter_scheduler(void)
 
 	/* Create the scheduler thread. */
 	cpu_spinlock_acquire(&global_scheduler_lock);
-	cpu->scheduler = x86_thread_allocate_empty(&kernel_process, "scheduler thread",
+	x86_thread_construct_empty(&(cpu->scheduler_thread), &kernel_process, "scheduler thread",
 		KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	cpu->scheduler = &(cpu->scheduler_thread);
 	thread_new_insert(&kernel_process, cpu->scheduler);
 	/* The scheduler thread should not be scheduled! */
 	cpu->scheduler->noarch.state = THREAD_SCHEDULER;
@@ -140,6 +147,9 @@ noreturn enter_scheduler(void)
 	cpu->thread = NULL;
 	thread = NULL;
 	proc = NULL;
+
+	/* Wait for all other CPUs to enter the scheduler loop. */
+	cpu_checkpoint_enter(&scheduler_checkpoint);
 
 	while (true)
 	{
@@ -337,8 +347,9 @@ void thread_create(unsigned int pid, void (*entry)(void *), void *cookie)
 
 	proc = &kernel_process;
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
-	thread = x86_thread_allocate(proc, "some thread", KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR,
-		stack, 4096, &thread_entry, entry, cookie);
+	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct x86_thread));
+	x86_thread_construct_kthread(thread, proc, "some thread", stack, 4096, &thread_entry, entry,
+		cookie);
 
 	/* New threads start holding the global scheduler lock. */
 	thread->int_enabled = true; /* The thread, by default, has interrupts enabled. */

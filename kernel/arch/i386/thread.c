@@ -13,6 +13,11 @@
 uint32_t struct_x86_thread_offsetof_esp = offsetof(struct x86_thread, esp);
 static atomic_uint current_tid = 1;
 
+#ifdef KERNEL_DEBUG
+#define MAX_THREADS 128
+struct x86_thread *debug_x86_threads[MAX_THREADS];
+#endif
+
 static void set_name(struct x86_thread *thread, const char *name)
 {
 	size_t len = kstrlen(name);
@@ -24,18 +29,22 @@ static void set_name(struct x86_thread *thread, const char *name)
 	thread->noarch.name[len] = 0;
 }
 
-/* Allocates an empty thread object. This has only one purpose - to create the first kernel thread
+/* Builds an empty x86_thread object. This has only one purpose - to create the first kernel thread
    on the CPU. */
-struct x86_thread *x86_thread_allocate_empty(struct x86_proc *proc, const char *name, uint16_t cs,
-	uint16_t ds)
+void x86_thread_construct_empty(struct x86_thread *thread, struct x86_proc *proc, const char *name,
+	uint16_t cs, uint16_t ds)
 {
-	struct x86_thread *thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct x86_thread));
-
 	/* We cast pointers here. Make sure we're not in the wrong. */
 	kassert(sizeof(uint32_t) == sizeof(vaddr_t));
 
 	set_name(thread, name);
 	thread->noarch.tid = atomic_fetch_add(&current_tid, 1);
+
+#ifdef KERNEL_DEBUG
+	if (thread->noarch.tid < MAX_THREADS)
+		debug_x86_threads[thread->noarch.tid] = thread;
+#endif
+
 	thread->noarch.state = THREAD_NEW;
 	thread->noarch.sleep_since = 0;
 	thread->noarch.sleep_until = 0;
@@ -45,30 +54,21 @@ struct x86_thread *x86_thread_allocate_empty(struct x86_proc *proc, const char *
 	thread->cs = cs;
 	thread->ds = ds;
 	thread->parent = proc;
-
-	return thread;
 }
 
-struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, uint16_t cs,
-	uint16_t ds, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
+/* Builds a kernel x86_thread object. */
+void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *proc,
+	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
 	void *cookie)
 {
 	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
-	struct x86_thread *thread;
 
-	thread = x86_thread_allocate_empty(proc, name, cs, ds);
+	x86_thread_construct_empty(thread, proc, name, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
 
 	thread->tentry = tentry;
 	thread->entry = entry;
 	thread->cookie = cookie;
-
-	/* Create stacks. */
-	if (cs != KERNEL_CODE_SELECTOR)
-	{
-		thread->stack0 = kalloc(HEAP_NORMAL, 16, KERNEL_STACK_SIZE);
-		thread->ebp0 = (uint32_t)thread->stack0 + KERNEL_STACK_SIZE;
-	}
 
 	/* Make sure the stack is aligned to 16 bytes. */
 	kassert(((uintptr_t)stack) % 16 == 0);
@@ -82,15 +82,15 @@ struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, 
 	thread->esp = thread->esp - sizeof(struct isr_frame);
 	isr_frame = (struct isr_frame *)thread->esp;
 
-	isr_frame->cs = cs;
+	isr_frame->cs = KERNEL_CODE_SELECTOR;
 	isr_frame->eip = (uint32_t)tentry;
 
-	isr_frame->ds = ds;
-	isr_frame->es = ds;
+	isr_frame->ds = KERNEL_DATA_SELECTOR;
+	isr_frame->es = KERNEL_DATA_SELECTOR;
 	isr_frame->fs = 0;
 	isr_frame->gs = 0;
 
-	isr_frame->ss = ds;
+	isr_frame->ss = KERNEL_DATA_SELECTOR;
 	isr_frame->esp = thread->ebp;
 
 	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
@@ -100,16 +100,4 @@ struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, 
 
 	switch_frame->ebp = thread->ebp;
 	switch_frame->eip = (uint32_t)isr_exit;
-
-	/* And finally, we're done! */
-	return thread;
-}
-
-/* Frees the thread object. */
-void x86_thread_free(struct x86_thread *thread)
-{
-	if (thread->stack0)
-		kfree(thread->stack0);
-
-	kfree(thread);
 }

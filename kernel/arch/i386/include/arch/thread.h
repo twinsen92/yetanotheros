@@ -43,18 +43,15 @@ struct x86_thread
 
 LIST_HEAD(x86_thread_list, x86_thread);
 
-/* Allocates an empty thread object. This has only one purpose - to create the first kernel thread
+/* Builds an empty x86_thread object. This has only one purpose - to create the first kernel thread
    on the CPU. */
-struct x86_thread *x86_thread_allocate_empty(struct x86_proc *proc, const char *name, uint16_t cs,
-	uint16_t ds);
+void x86_thread_construct_empty(struct x86_thread *thread, struct x86_proc *proc, const char *name,
+	uint16_t cs, uint16_t ds);
 
-/* Allocates a thread object.  */
-struct x86_thread *x86_thread_allocate(struct x86_proc *proc, const char *name, uint16_t cs,
-	uint16_t ds, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
+/* Builds a kernel x86_thread object. */
+void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *proc,
+	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
 	void *cookie);
-
-/* Frees the thread object. */
-void x86_thread_free(struct x86_thread *thread);
 
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */
