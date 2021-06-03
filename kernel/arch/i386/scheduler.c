@@ -275,7 +275,7 @@ void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 	cpu_spinlock_acquire(&global_scheduler_lock);
 
 	/* We release the mutex while holding the global scheduler lock. This way we can be sure no
-	   other thread acquires the mutex between release and reschedule() */
+	   other thread notifies the mutex between release and reschedule() */
 	if (mutex)
 		thread_mutex_release(mutex);
 
@@ -336,8 +336,9 @@ static void thread_entry(void)
 }
 
 /* Creates a thread in the process identified by pid. */
-void thread_create(unsigned int pid, void (*entry)(void *), void *cookie)
+tid_t thread_create(unsigned int pid, void (*entry)(void *), void *cookie, const char *name)
 {
+	tid_t tid;
 	struct x86_proc *proc;
 	struct x86_thread *thread;
 	vaddr_t stack;
@@ -348,16 +349,22 @@ void thread_create(unsigned int pid, void (*entry)(void *), void *cookie)
 	proc = &kernel_process;
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct x86_thread));
-	x86_thread_construct_kthread(thread, proc, "some thread", stack, 4096, &thread_entry, entry,
+	x86_thread_construct_kthread(thread, proc, name, stack, 4096, &thread_entry, entry,
 		cookie);
 
 	/* New threads start holding the global scheduler lock. */
 	thread->int_enabled = true; /* The thread, by default, has interrupts enabled. */
 	thread->cli_stack = 1;
 
+	/* We get the ID before putting the thread into the scheduler structures. The thread might exit
+	   and be destroyed before we even return from this function. */
+	tid = thread->noarch.tid;
+
 	cpu_spinlock_acquire(&global_scheduler_lock);
 	thread_new_insert(proc, thread);
 	cpu_spinlock_release(&global_scheduler_lock);
+
+	return tid;
 }
 
 /* Forces the current thread to be rescheduled. */

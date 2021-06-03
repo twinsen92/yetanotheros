@@ -86,7 +86,14 @@ void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 		num_read += batch;
 	}
 
+	/* Set the EOF flag if no data is left in the buffer. */
+	if (buffer->head == buffer->tail)
+		buffer->flags |= EBF_EOF;
+
 	thread_mutex_release(&(buffer->mutex));
+
+	if (num_read > 0)
+		thread_cond_notify(&(buffer->changed));
 }
 
 /* Tries to read at most size bytes. Returns the acutal number of read bytes. */
@@ -97,14 +104,22 @@ size_t eb_try_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 	thread_mutex_acquire(&(buffer->mutex));
 
 	if (buffer->flags & EBF_EOF)
-		return 0;
+		goto _eb_try_read_done;
 
 	/* Calculate how much we're gonna read, read the bytes and modify the buffer. */
 	num_read = kmin(unsafe_get_contents_length(buffer), size);
 	kmemmove(dest, buffer->head, num_read);
 	buffer->head += num_read;
 
+	/* Set the EOF flag if no data is left in the buffer. */
+	if (buffer->head == buffer->tail)
+		buffer->flags |= EBF_EOF;
+
+_eb_try_read_done:
 	thread_mutex_release(&(buffer->mutex));
+
+	if (num_read > 0)
+		thread_cond_notify(&(buffer->changed));
 
 	return num_read;
 }
@@ -152,7 +167,14 @@ void eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size)
 	}
 
 _eb_write_done:
+	/* Clear the EOF flag, if needed. */
+	if (num_written > 0)
+		buffer->flags &= ~EBF_EOF;
+
 	thread_mutex_release(&(buffer->mutex));
+
+	if (num_written > 0)
+		thread_cond_notify(&(buffer->changed));
 }
 
 /* Tries to write at most size bytes. Returns the actual number of bytes written. */
@@ -177,7 +199,14 @@ size_t eb_try_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t 
 	buffer->tail += num_written;
 
 _eb_try_write_done:
+	/* Clear the EOF flag, if needed. */
+	if (num_written > 0)
+		buffer->flags &= ~EBF_EOF;
+
 	thread_mutex_release(&(buffer->mutex));
+
+	if (num_written > 0)
+		thread_cond_notify(&(buffer->changed));
 
 	return num_written;
 }

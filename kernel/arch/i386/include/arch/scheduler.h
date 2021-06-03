@@ -3,6 +3,7 @@
 #define ARCH_I386_SCHEDULER_H
 
 #include <kernel/cdefs.h>
+#include <kernel/cpu_spinlock.h>
 #include <kernel/thread.h>
 #include <arch/thread.h>
 
@@ -26,6 +27,8 @@ struct x86_thread *get_current_thread(void);
 /* Make the current thread wait on the given condition. Optionally, a mutex can be released and
    re-acquired. */
 void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex);
+
+void sched_thread_wait_with_spinlock(struct thread_cond *cond, struct cpu_spinlock *spinlock);
 
 /* Notify a thread waiting on the given cond that it is unlocked. Puts the thread at the beginning
    of the thread queue. */

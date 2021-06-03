@@ -17,7 +17,11 @@ static void (*handlers[ISR_MAX])(struct isr_frame*);
 /* Generic interrupt handler routine. */
 void generic_interrupt_handler(struct isr_frame *frame)
 {
+	uint32_t cr2, cr3;
 	void (*handler)(struct isr_frame*);
+	
+	asm volatile ("movl %%cr2, %0" : "=r" (cr2));
+	asm volatile ("movl %%cr3, %0" : "=r" (cr3));
 
 	kassert(frame->int_no < ISR_MAX);
 	handler = handlers[frame->int_no];

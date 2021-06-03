@@ -15,6 +15,7 @@
 #include <arch/mpt.h>
 #include <arch/paging.h>
 #include <arch/pic.h>
+#include <arch/serial.h>
 #include <arch/scheduler.h>
 #include <arch/smp.h>
 #include <arch/thread.h>
@@ -54,8 +55,9 @@ noreturn generic_x86_init(void)
 	/* Init x86-specific devices. */
 	mpt_enum_ioapics();
 	init_ioapics();
+	init_serial();
 
-	thread_create(PID_KERNEL, kernel_main, NULL);
+	thread_create(PID_KERNEL, kernel_main, NULL, "kernel_main");
 
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;

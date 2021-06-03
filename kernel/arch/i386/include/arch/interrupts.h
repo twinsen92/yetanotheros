@@ -9,6 +9,8 @@
 
 #define INT_IRQ0			0x20
 #define INT_IRQ_TIMER		INT_IRQ0
+#define INT_IRQ_COM1		(INT_IRQ0 + 4)
+#define INT_IRQ_COM2		(INT_IRQ0 + 3)
 #define INT_IRQ_ERROR		(INT_IRQ0 + 19)
 #define INT_IRQ_SPURIOUS	(INT_IRQ0 + 31)
 
