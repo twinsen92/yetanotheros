@@ -19,6 +19,8 @@
 #include <arch/smp.h>
 #include <arch/thread.h>
 
+uint32_t yaos2_initialized;
+
 noreturn generic_x86_init(void)
 {
 	if (!mpt_scan())

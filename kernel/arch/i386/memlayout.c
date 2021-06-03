@@ -85,7 +85,7 @@ bool vm_is_static(vaddr_t v)
 	const struct vm_region *region = get_region_v(v);
 
 	if (region)
-		return region->is_static;
+		return region->flags & VM_BIT_STATIC;
 
 	return false;
 }
@@ -96,7 +96,7 @@ bool vm_is_static_p(paddr_t p)
 	const struct vm_region *region = get_region_p(p);
 
 	if (region)
-		return region->is_static;
+		return region->flags & VM_BIT_STATIC;
 
 	return false;
 }
@@ -107,7 +107,7 @@ pflags_t vm_get_pflags(vaddr_t v)
 	const struct vm_region *region = get_region_v(v);
 
 	if (region)
-		return region->flags;
+		return region->pflags;
 
 	return 0;
 }

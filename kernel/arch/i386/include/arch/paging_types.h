@@ -14,6 +14,7 @@
 /* Control register paging related bits. */
 
 #define CR0_PG				0x80000000 /* Paging enable */
+#define CR0_WP				0x00010000 /* Write protection enable bit */
 #define CR4_PGE				0x00000080 /* Global page enable */
 
 #ifndef __ASSEMBLER__

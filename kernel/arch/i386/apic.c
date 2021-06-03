@@ -159,7 +159,9 @@ void init_lapic(void)
 	/* Disable performance counter overflow interrupts on machines that provide that interrupt
 	   entry. */
 	if(((lapic[LAPIC_REG_VER]>>16) & 0xFF) >= 4)
+	{
 		lapicw(LAPIC_REG_PCINT, LAPIC_MASKED);
+	}
 
 	/* Map error interrupt to IRQ_ERROR. */
 	lapicw(LAPIC_REG_ERROR, INT_IRQ_ERROR);

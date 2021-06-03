@@ -55,7 +55,7 @@ void init_smp(void)
 	relocated = km_ap_entry_reloc(KM_VIRT_AP_ENTRY_BASE);
 	size = (size_t)(KM_VIRT_AP_ENTRY_END - KM_VIRT_AP_ENTRY_BASE);
 
-	kmemmove(relocated, original, size);
+	kmemcpy(relocated, original, size);
 
 	relocated_entry = km_paddr(km_ap_entry_reloc(get_symbol_vaddr(ap_start)));
 	relocated_args = km_ap_entry_reloc(get_symbol_vaddr(ap_entry_args));

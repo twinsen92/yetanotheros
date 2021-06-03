@@ -50,6 +50,8 @@ extern symbol_t __kernel_page_tables;
 #define KM_VIRT_LOW_BASE			(get_symbol_vaddr(__kernel_low_begin))
 #define KM_VIRT_LOW_END				(get_symbol_vaddr(__kernel_low_end))
 #define KM_VIRT_RO_BASE				(get_symbol_vaddr(__kernel_mem_ro_begin))
+#define KM_VIRT_BOOT_STACK_BASE		(get_symbol_vaddr(__boot_stack_top))
+#define KM_VIRT_BOOT_STACK_END		(get_symbol_vaddr(__boot_stack_bottom))
 #define KM_VIRT_RO_END				(get_symbol_vaddr(__kernel_mem_ro_end))
 #define KM_VIRT_RW_BASE				(get_symbol_vaddr(__kernel_mem_rw_begin))
 #define KM_VIRT_RW_END				(get_symbol_vaddr(__kernel_mem_rw_end))
@@ -156,12 +158,11 @@ struct vm_region
 	/* Region size, in bytes. */
 	size_t size;
 
-	/* Specifies whether the region is always mapped this way. Non-static regions will be mapped
-	   on demand only! */
-	bool is_static;
+	/* Region flags. */
+	uint32_t flags;
 
 	/* Flags to use when mapping the region. */
-	pflags_t flags;
+	pflags_t pflags;
 };
 
 #define create_vm_map(map)																		\
@@ -171,71 +172,93 @@ struct vm_region
 		KM_VIRT_LOW_BASE,																		\
 		km_paddr(KM_VIRT_LOW_BASE),																\
 		km_paddr(KM_VIRT_LOW_END) - km_paddr(KM_VIRT_LOW_BASE),									\
-		true,																					\
+		VM_BIT_STATIC,																			\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Kernel's read-only region. Contains kernel's code and read-only data. */					\
 	map[1] = (struct vm_region) {																\
 		KM_VIRT_RO_BASE,																		\
 		km_paddr(KM_VIRT_RO_BASE),																\
-		km_paddr(KM_VIRT_RO_END) - km_paddr(KM_VIRT_RO_BASE),									\
-		true,																					\
+		KM_VIRT_BOOT_STACK_BASE - KM_VIRT_RO_BASE,												\
+		VM_BIT_EXECUTABLE | VM_BIT_STATIC,														\
+		PAGE_BIT_GLOBAL																			\
+	},																							\
+	/* Boot stack region. */																	\
+	map[2] = (struct vm_region) {																\
+		KM_VIRT_BOOT_STACK_BASE,																\
+		km_paddr(KM_VIRT_BOOT_STACK_BASE),														\
+		KM_VIRT_BOOT_STACK_END - KM_VIRT_BOOT_STACK_BASE,										\
+		VM_BIT_EXECUTABLE | VM_BIT_STATIC,														\
+		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
+	};																							\
+	/* Kernel's read-only region. Contains kernel's code and read-only data. */					\
+	map[3] = (struct vm_region) {																\
+		KM_VIRT_BOOT_STACK_END,																	\
+		km_paddr(KM_VIRT_BOOT_STACK_END),														\
+		KM_VIRT_RO_END - KM_VIRT_BOOT_STACK_END,												\
+		VM_BIT_EXECUTABLE | VM_BIT_STATIC,														\
 		PAGE_BIT_GLOBAL																			\
 	},																							\
 	/* Kernel's R/W region. Contains kernel's non-constant static data. */						\
-	map[2] = (struct vm_region) {																\
+	map[4] = (struct vm_region) {																\
 		KM_VIRT_RW_BASE,																		\
 		km_paddr(KM_VIRT_RW_BASE),																\
 		km_paddr(KM_VIRT_RW_END) - km_paddr(KM_VIRT_RW_BASE),									\
-		true,																					\
+		VM_BIT_EXECUTABLE | VM_BIT_STATIC,														\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Free physical memory. */																	\
-	map[3] = (struct vm_region) {																\
+	map[5] = (struct vm_region) {																\
 		(vaddr_t)KM_FREE_PHYS_BASE,																\
 		KM_FREE_PHYS_BASE,																		\
 		/* TODO: This makes us unable to use the last 1GB of physical memory. */				\
 		(paddr_t)(KM_VIRT_LOW_BASE) - KM_FREE_PHYS_BASE,										\
-		true,																					\
+		VM_BIT_STATIC,																			\
 		PAGE_BIT_RW																				\
 	};																							\
 	/* Dynamic kernel memory region. */															\
-	map[4] = (struct vm_region) {																\
+	map[6] = (struct vm_region) {																\
 		KM_VIRT_END,																			\
 		PHYS_NULL,																				\
 		KM_DEV_VIRT_BASE - KM_VIRT_END,															\
-		false,																					\
+		0,																						\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* Memory mapped devices region. */															\
-	map[5] = (struct vm_region) {																\
+	map[7] = (struct vm_region) {																\
 		KM_DEV_VIRT_BASE,																		\
 		(paddr_t)KM_DEV_VIRT_BASE,																\
 		KM_DEV_VIRT_END - KM_DEV_VIRT_BASE,														\
-		true,																					\
+		VM_BIT_STATIC,																			\
 		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
 	};																							\
 	/* AP entry region. */																		\
-	map[6] = (struct vm_region) {																\
+	map[8] = (struct vm_region) {																\
 		(vaddr_t)KM_PHYS_AP_ENTRY_BASE,															\
 		KM_PHYS_AP_ENTRY_BASE,																	\
 		KM_PHYS_AP_ENTRY_END - KM_PHYS_AP_ENTRY_BASE,											\
-		true,																					\
+		VM_BIT_STATIC,																			\
 		PAGE_BIT_RW																				\
 	};																							\
 }
 
-#define VM_NOF_REGIONS 7
+#define VM_NOF_REGIONS 9
 
 /* Executable region indices, used by early_paging.c to initially map the kernel */
 
 #define VM_KERNEL_EXEC_RO_REGION 1
-#define VM_KERNEL_EXEC_RW_REGION 2
+#define VM_KERNEL_EXEC_RO2_REGION 3
+#define VM_KERNEL_EXEC_RW_REGION 4
+#define VM_KERNEL_BOOT_STACK_REGION 2
 
 /* Other regions */
 
-#define VM_PALLOC_REGION 3
-#define VM_DYNAMIC_REGION 4
+#define VM_PALLOC_REGION 5
+#define VM_DYNAMIC_REGION 6
+
+/* Region flag bits. */
+#define VM_BIT_STATIC		0x01
+#define VM_BIT_EXECUTABLE	0x02
 
 /* The map itself, defined in early_paging.c */
 extern const struct vm_region *vm_map;

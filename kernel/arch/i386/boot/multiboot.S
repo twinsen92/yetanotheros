@@ -39,13 +39,9 @@ __boot_kernel_pd:
 __boot_zero_pt:
 	.fill 1024, 4, 0
 
-.global yaos2_initialized
-yaos2_initialized:
-	.long 0
-
 # Reserve a stack for the initial thread.
 .section .bss
-.align 16
+.align 4096
 .global __boot_stack_top
 __boot_stack_top:
 	.skip 16384 # 16 KiB
@@ -74,6 +70,7 @@ _start:
 	# Set the paging bit
 	movl %cr0, %ecx
 	orl $CR0_PG, %ecx
+	orl $CR0_WP, %ecx
 	movl %ecx, %cr0
 
 	# Set the global page enable bit
@@ -88,8 +85,10 @@ _start_with_paging:
 	movl $__boot_stack_bottom, %esp
 	movl %esp, %ebp
 
-	# Push 0 for an unwinder.
+	/* Push a call frame that originated from null. */
 	pushl $0
+	pushl %ebp
+	movl %esp, %ebp
 
 	# Multiboot magic number.
 	pushl %eax

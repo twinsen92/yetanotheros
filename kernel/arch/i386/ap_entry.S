@@ -49,6 +49,7 @@ ap_start_32:
 	/* Set the paging bit */
 	movl	%cr0, %eax
 	orl		$CR0_PG, %eax
+	orl		$CR0_WP, %eax
 	movl	%eax, %cr0
 
 	/* Set the global page enable bit */
@@ -59,9 +60,12 @@ ap_start_32:
 	/* Start using the stack we've been given. */
 	leal	(ap_entry_args + 4 - ASM_AP_ENTRY_OFFSET), %eax
 	movl	(%eax), %esp
+	movl	%esp, %ebp
 
-	/* Push 0 for an unwinder. */
+	/* Push a call frame that originated from null. */
 	pushl	$0
+	pushl	%ebp
+	movl	%esp, %ebp
 
 	/* Jump to C code. */
 	call	*(ap_entry_args + 12 - ASM_AP_ENTRY_OFFSET)

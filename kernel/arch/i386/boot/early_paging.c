@@ -94,7 +94,7 @@ static void map_region(vaddr_t vfrom, paddr_t pfrom, paddr_t pto, uint32_t flags
    kernel page structures. */
 static void map_region_object(const struct vm_region *region, bool early)
 {
-	map_region(region->vbase, region->pbase, region->pbase + region->size, region->flags, early);
+	map_region(region->vbase, region->pbase, region->pbase + region->size, region->pflags, early);
 }
 
 /* Adds a self-reference to the kernel page directory at a the kernel page directory entry pdi,
@@ -137,25 +137,26 @@ void early_init_kernel_paging(void)
 	early_kassert(KM_VIRT_BASE == get_symbol_vaddr(__kernel_virtual_offset));
 	early_kassert(KM_EXEC_VIRT_BASE == get_symbol_vaddr(__kernel_mem_ro_begin));
 
-	/* Create page table entries for the kernel executable sections. */
-	map_region_object(&vm_map[VM_KERNEL_EXEC_RO_REGION], true);
-	map_region_object(&vm_map[VM_KERNEL_EXEC_RW_REGION], true);
+	/* Create page table entries for the kernel executable and stack sections. */
+	for(int i = 0; i < VM_NOF_REGIONS; i++)
+	{
+		/* We're only mapping static executable data here. */
+		if ((vm_map[i].flags & VM_BIT_STATIC) && (vm_map[i].flags & VM_BIT_EXECUTABLE))
+			map_region_object(&vm_map[i], true);
+	}
+
+	/* Also create a self referencing entry. */
 	add_self_ref(CURRENT_PD_INDEX, 0, true);
 
+	/* Use the new page tables. */
 	asm_set_cr3(km_paddr(new_kernel_pd));
 
 	/* Now that we can access all of the kernel executable, time to map other regions. */
 	for(int i = 0; i < VM_NOF_REGIONS; i++)
 	{
-		if (i == VM_KERNEL_EXEC_RO_REGION || i == VM_KERNEL_EXEC_RW_REGION)
-			/* Already mapped! */
-			continue;
-
-		if (vm_map[i].is_static == false)
-			/* We're only mapping static data here. */
-			continue;
-
-		map_region_object(&vm_map[i], false);
+		/* We're only mapping static non-executable data here. */
+		if ((vm_map[i].flags & VM_BIT_STATIC) && !(vm_map[i].flags & VM_BIT_EXECUTABLE))
+			map_region_object(&vm_map[i], false);
 	}
 
 	/* Fill in the page table addresses in the page directory. */
