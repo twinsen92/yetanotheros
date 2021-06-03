@@ -61,7 +61,7 @@ isr_exit:
 	.func isr##NUMBER##_stub;	\
 	isr##NUMBER##_stub:			\
 		TYPE;					\
-		push $0x##NUMBER;		\
+		pushl $0x##NUMBER;		\
 		jmp isr_entry;			\
 	.endfunc;					\
 								\

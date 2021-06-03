@@ -33,4 +33,22 @@ noreturn _kpanic(const char *reason, const char *file, unsigned int line);
 #define kassert(expr)
 #endif
 
+#define DEBUG_MAX_CALL_DEPTH 16
+
+struct debug_call_stack
+{
+	void *stack[DEBUG_MAX_CALL_DEPTH];
+	int depth;
+};
+
+/* Clears and fills the call stack with current data. */
+void debug_fill_call_stack(struct debug_call_stack *cs);
+
+static inline void debug_clear_call_stack(struct debug_call_stack *cs)
+{
+	for (int i = 0; i < DEBUG_MAX_CALL_DEPTH; i++)
+		cs->stack[i] = NULL;
+	cs->depth = 0;
+}
+
 #endif

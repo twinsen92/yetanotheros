@@ -9,11 +9,16 @@
 
 #define asm_barrier() asm volatile ("" : : : "memory")
 
-void thread_mutex_create(struct thread_mutex *mutex)
+void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned int line)
 {
 	atomic_store(&(mutex->locked), false);
 	mutex->tid = TID_INVALID;
 	thread_cond_create(&(mutex->wait_cond));
+#ifdef KERNEL_DEBUG
+	mutex->creation_file = file;
+	mutex->creation_line = line;
+	debug_clear_call_stack(&(mutex->lock_call_stack));
+#endif
 }
 
 void thread_mutex_acquire(struct thread_mutex *mutex)
@@ -29,6 +34,9 @@ void thread_mutex_acquire(struct thread_mutex *mutex)
 	if (thread == NULL)
 		kpanic("thread_mutex_acquire(): no thread running");
 
+	if (thread_mutex_held(mutex))
+		kpanic("thread_mutex_acquire(): on held lock");
+
 	/* Check in a loop if we have locked the mutex with an atomic exchange. If not, go into blocked
 	   state. Another thread calling release on this mutex will notify and wake us up. */
 	while (atomic_exchange(&(mutex->locked), true))
@@ -37,6 +45,10 @@ void thread_mutex_acquire(struct thread_mutex *mutex)
 	asm_barrier();
 
 	mutex->tid = thread->noarch.tid;
+
+#ifdef KERNEL_DEBUG
+	debug_fill_call_stack(&(mutex->lock_call_stack));
+#endif
 
 	pop_no_interrupts();
 }
@@ -54,6 +66,10 @@ void thread_mutex_release(struct thread_mutex *mutex)
 		kpanic("thread_mutex_release(): called on an unheld mutex");
 
 	mutex->tid = TID_INVALID;
+
+#ifdef KERNEL_DEBUG
+	debug_clear_call_stack(&(mutex->lock_call_stack));
+#endif
 
 	asm_barrier();
 
@@ -79,16 +95,20 @@ bool thread_mutex_held(struct thread_mutex *mutex)
 	if (thread == NULL)
 		kpanic("thread_mutex_held(): no thread running");
 
-	ret = atomic_load(&(mutex->locked)) && mutex->tid == get_current_thread()->noarch.tid;
+	ret = atomic_load(&(mutex->locked)) && mutex->tid == thread->noarch.tid;
 
 	pop_no_interrupts();
 
 	return ret;
 }
 
-void thread_cond_create(struct thread_cond *cond)
+void _thread_cond_create(struct thread_cond *cond, const char *file, unsigned int line)
 {
 	atomic_store(&(cond->num_waiting), 0);
+#ifdef KERNEL_DEBUG
+	cond->creation_file = file;
+	cond->creation_line = line;
+#endif
 }
 
 void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex)

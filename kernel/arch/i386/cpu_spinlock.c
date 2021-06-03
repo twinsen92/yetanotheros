@@ -20,8 +20,12 @@ static inline int asm_xchg(void *ptr, int x)
 void cpu_spinlock_create(struct cpu_spinlock *spinlock, const char *name)
 {
 	spinlock->locked = 0;
-	spinlock->name = name;
 	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
+
+#ifdef KERNEL_DEBUG
+	spinlock->name = name;
+	debug_clear_call_stack(&(spinlock->lock_call_stack));
+#endif
 }
 
 static inline void spin_interruptible(struct cpu_spinlock *spinlock)
@@ -68,6 +72,10 @@ void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 		spinlock->cpu = cpu->num;
 	else
 		spinlock->cpu = CPU_SPINLOCK_UNKNOWN_CPU;
+
+#ifdef KERNEL_DEBUG
+	debug_fill_call_stack(&(spinlock->lock_call_stack));
+#endif
 }
 
 void cpu_spinlock_release(struct cpu_spinlock *spinlock)
@@ -81,6 +89,10 @@ void cpu_spinlock_release(struct cpu_spinlock *spinlock)
 		kpanic("cpu_spinlock_release(): called on an unheld spinlock");
 
 	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
+
+#ifdef KERNEL_DEBUG
+	debug_clear_call_stack(&(spinlock->lock_call_stack));
+#endif
 
 	asm_barrier();
 

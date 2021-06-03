@@ -74,24 +74,33 @@ void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *pr
 	kassert(((uintptr_t)stack) % 16 == 0);
 
 	thread->stack = stack;
-	thread->ebp = (uint32_t)thread->stack + stack_size;
+	thread->stack_size = stack_size;
+	thread->ebp = (uint32_t)thread->stack + stack_size - 32; /* TODO: Why???? */
 	thread->esp = thread->ebp;
+
+	/* Don't need to set up a ring 0 stack for a kernel thread. */
+	thread->stack0 = NULL;
+	thread->stack0_size = 0;
+	thread->ebp0 = 0;
 
 	/* 2. We'll be switching in an interrupt handler. We need to imitate the stack during
 	   an interrupt, so that iret works. */
 	thread->esp = thread->esp - sizeof(struct isr_frame);
 	isr_frame = (struct isr_frame *)thread->esp;
 
-	isr_frame->cs = KERNEL_CODE_SELECTOR;
-	isr_frame->eip = (uint32_t)tentry;
-
+	/* isr_exit stack */
+	isr_frame->ebp = thread->ebp;
 	isr_frame->ds = KERNEL_DATA_SELECTOR;
 	isr_frame->es = KERNEL_DATA_SELECTOR;
 	isr_frame->fs = 0;
 	isr_frame->gs = 0;
 
-	isr_frame->ss = KERNEL_DATA_SELECTOR;
-	isr_frame->esp = thread->ebp;
+	/* IRET stack. Since we're IRETing to the same ring, no need to provide SS:ESP */
+	isr_frame->ss = 0;
+	isr_frame->esp = 0;
+	isr_frame->eflags = 0;
+	isr_frame->cs = KERNEL_CODE_SELECTOR;
+	isr_frame->eip = (uint32_t)tentry;
 
 	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
 	   the stack, but omitting the parameters. Make ret take us to isr_exit. */

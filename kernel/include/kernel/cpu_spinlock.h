@@ -2,6 +2,8 @@
 #ifndef _KERNEL_CPU_SPINLOCK_H
 #define _KERNEL_CPU_SPINLOCK_H
 
+#include <kernel/debug.h>
+
 /* Default value for the cpu field in struct cpu_spinlock */
 #define CPU_SPINLOCK_INVALID_CPU -1
 
@@ -14,11 +16,13 @@ struct cpu_spinlock
 	/* Is the lock acquired? */
 	int locked;
 
-	/* Debug: Name of the CPU spinlock. */
-	const char *name;
+	int cpu; /* The number of the holding CPU. */
 
-	/* Debug: The number of the holding CPU. */
-	int cpu;
+#ifdef KERNEL_DEBUG
+	const char *name; /* Name of the CPU spinlock. */
+
+	struct debug_call_stack lock_call_stack;
+#endif
 };
 
 void cpu_spinlock_create(struct cpu_spinlock *spinlock, const char *name);

@@ -21,10 +21,12 @@ struct x86_thread
 	uint32_t esp; /* Current stack pointer. */
 	uint32_t ebp; /* Bottom of the stack pointer. */
 	vaddr_t stack; /* Stack top pointer. */
+	size_t stack_size;
 
 	/* Ring 0 stack. */
 	uint32_t ebp0; /* Bottom of the kernel stack pointer. 0 if using kernel selectors. */
 	vaddr_t stack0; /* Kernel stack top pointer. NULL if using kernel selectors. */
+	size_t stack0_size;
 
 	/* Interrupts state. These should be filled in by the scheduler. */
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
