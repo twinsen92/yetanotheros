@@ -2,21 +2,68 @@
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/cpu_spinlock.h>
+#include <kernel/exclusive_buffer.h>
+#include <kernel/heap.h>
 #include <kernel/interrupts.h>
 #include <kernel/printf.h>
+#include <kernel/thread.h>
+#include <kernel/devices/serial.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
-#include <arch/scheduler.h>
+#include <arch/serial.h>
 #include <arch/thread.h>
 #include <arch/vga.h>
 
-static struct cpu_spinlock kdprintf_spinlock;
+static struct cpu_spinlock vga_kdprintf_spinlock;
+
+static struct thread_mutex serial_mutex;
+static atomic_bool debug_serial_enabled;
+static struct serial *debug_serial = NULL;
+static struct exclusive_buffer *debug_buffer = NULL;
 
 /* Initializes the debug subsystem in the kernel. Call this early in initialization. */
 void init_debug(void)
 {
 	init_vga_printf();
-	cpu_spinlock_create(&kdprintf_spinlock, "kdprintf spinlock");
+	cpu_spinlock_create(&vga_kdprintf_spinlock, "VGA kdprintf spinlock");
+	thread_mutex_create(&serial_mutex);
+}
+
+/* Redirects debug output to the given serial port. */
+void debug_redirect_to_serial(struct serial *s)
+{
+	kassert(s);
+
+	thread_mutex_acquire(&serial_mutex);
+
+	if (debug_serial == s)
+		goto redundant;
+
+	if (debug_serial)
+	{
+		/* A buffer was already allocated and it is subscribed to a serial output. */
+		serial_unsubscribe_output(debug_serial, debug_buffer);
+	}
+	else
+	{
+		/* The buffer has to be allocated. */
+		debug_buffer = kalloc(HEAP_NORMAL, 1, sizeof(struct exclusive_buffer));
+		eb_create(debug_buffer, 512, 1, 0);
+	}
+
+	/* Subscribe to the new serial port. */
+	debug_serial = s;
+	serial_subscribe_output(debug_serial, debug_buffer);
+
+	atomic_store(&debug_serial_enabled, true);
+
+redundant:
+	thread_mutex_release(&serial_mutex);
+}
+
+static void unsafe_serial_putchar(char c)
+{
+	eb_try_write(debug_buffer, (uint8_t*)&c, 1);
 }
 
 /* Debug formatted printer. */
@@ -26,9 +73,29 @@ int kdprintf(const char * restrict format, ...)
 	va_list parameters;
 
 	va_start(parameters, format);
-	cpu_spinlock_acquire(&kdprintf_spinlock);
-	ret = va_vga_printf(format, parameters);
-	cpu_spinlock_release(&kdprintf_spinlock);
+
+	if (atomic_load(&debug_serial_enabled))
+	{
+		thread_mutex_acquire(&serial_mutex);
+
+		/* We use the multi-lock feature of exclusive_buffer to write all characters to the buffer
+		   one by one. */
+		eb_lock(debug_buffer);
+		ret = generic_printf(unsafe_serial_putchar, format, parameters);
+		eb_unlock(debug_buffer);
+
+		/* Stimulate a write. */
+		serial_write(debug_serial);
+
+		thread_mutex_release(&serial_mutex);
+	}
+	else
+	{
+		cpu_spinlock_acquire(&vga_kdprintf_spinlock);
+		ret = va_vga_printf(format, parameters);
+		cpu_spinlock_release(&vga_kdprintf_spinlock);
+	}
+
 	va_end(parameters);
 
 	return ret;

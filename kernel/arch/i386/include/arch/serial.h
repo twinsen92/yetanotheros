@@ -56,12 +56,4 @@ void init_serial(void);
 struct serial *serial_get_com1(void);
 struct serial *serial_get_com2(void);
 
-void serial_subscribe_input(struct serial *com, struct exclusive_buffer *buffer);
-void serial_unsubscribe_input(struct serial *com, struct exclusive_buffer *buffer);
-void serial_subscribe_output(struct serial *com, struct exclusive_buffer *buffer);
-void serial_unsubscribe_output(struct serial *com, struct exclusive_buffer *buffer);
-
-void serial_read(struct serial *com);
-void serial_write(struct serial *com);
-
 #endif

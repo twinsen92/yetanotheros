@@ -2,6 +2,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/exclusive_buffer.h>
+#include <kernel/interrupts.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/thread.h>
@@ -242,6 +243,8 @@ struct serial *serial_get_com2(void)
 {
 	return &com2;
 }
+
+/* kernel/devices/serial.h interface */
 
 void serial_subscribe_input(struct serial *com, struct exclusive_buffer *buffer)
 {

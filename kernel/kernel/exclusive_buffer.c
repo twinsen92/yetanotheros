@@ -47,6 +47,7 @@ void eb_create(struct exclusive_buffer *buffer, size_t size, uintptr_t alignment
 	buffer->head = buffer->buffer;
 	buffer->tail = buffer->buffer;
 
+	buffer->multi_lock = false;
 	thread_mutex_create(&(buffer->mutex));
 	thread_cond_create(&(buffer->changed));
 }
@@ -66,10 +67,27 @@ void eb_free(struct exclusive_buffer *buffer)
 	buffer->tail = NULL;
 }
 
+/* Lock buffer for multiple operations. */
+void eb_lock(struct exclusive_buffer *buffer)
+{
+	thread_mutex_acquire(&(buffer->mutex));
+	buffer->multi_lock = true;
+}
+
+/* Unlock buffer after multiple operations. */
+void eb_unlock(struct exclusive_buffer *buffer)
+{
+	buffer->multi_lock = false;
+	thread_mutex_release(&(buffer->mutex));
+}
+
 /* Reads a requested number of bytes. Waits until all of the bytes have been read into dest. */
 void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 {
 	size_t num_read = 0, batch;
+
+	if (thread_mutex_held(&(buffer->mutex)) && buffer->multi_lock)
+		kpanic("eb_read() called after eb_lock()");
 
 	thread_mutex_acquire(&(buffer->mutex));
 
@@ -99,9 +117,14 @@ void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 /* Tries to read at most size bytes. Returns the acutal number of read bytes. */
 size_t eb_try_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 {
+	bool in_multi_lock = false;
 	size_t num_read = 0;
 
-	thread_mutex_acquire(&(buffer->mutex));
+	/* Check if we're holding the multi lock from eb_lock(). */
+	in_multi_lock = thread_mutex_held(&(buffer->mutex)) && buffer->multi_lock;
+
+	if (!in_multi_lock)
+		thread_mutex_acquire(&(buffer->mutex));
 
 	if (buffer->flags & EBF_EOF)
 		goto _eb_try_read_done;
@@ -116,7 +139,8 @@ size_t eb_try_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 		buffer->flags |= EBF_EOF;
 
 _eb_try_read_done:
-	thread_mutex_release(&(buffer->mutex));
+	if (!in_multi_lock)
+		thread_mutex_release(&(buffer->mutex));
 
 	if (num_read > 0)
 		thread_cond_notify(&(buffer->changed));
@@ -140,6 +164,9 @@ static void unsafe_growing_write(struct exclusive_buffer *buffer, const uint8_t 
 void eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size)
 {
 	size_t num_written = 0, batch;
+
+	if (thread_mutex_held(&(buffer->mutex)) && buffer->multi_lock)
+		kpanic("eb_write() called after eb_lock()");
 
 	thread_mutex_acquire(&(buffer->mutex));
 
@@ -180,9 +207,14 @@ _eb_write_done:
 /* Tries to write at most size bytes. Returns the actual number of bytes written. */
 size_t eb_try_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size)
 {
+	bool in_multi_lock = false;
 	size_t num_written = 0;
 
-	thread_mutex_acquire(&(buffer->mutex));
+	/* Check if we're holding the multi lock from eb_lock(). */
+	in_multi_lock = thread_mutex_held(&(buffer->mutex)) && buffer->multi_lock;
+
+	if (!in_multi_lock)
+		thread_mutex_acquire(&(buffer->mutex));
 
 	if (buffer->flags & EBF_GROWING)
 	{
@@ -203,7 +235,8 @@ _eb_try_write_done:
 	if (num_written > 0)
 		buffer->flags &= ~EBF_EOF;
 
-	thread_mutex_release(&(buffer->mutex));
+	if (!in_multi_lock)
+		thread_mutex_release(&(buffer->mutex));
 
 	if (num_written > 0)
 		thread_cond_notify(&(buffer->changed));
@@ -214,6 +247,9 @@ _eb_try_write_done:
 /* Waits until EBF_EOF has been set. */
 void eb_flush(struct exclusive_buffer *buffer)
 {
+	if (thread_mutex_held(&(buffer->mutex)) && buffer->multi_lock)
+		kpanic("eb_flush() called after eb_lock()");
+
 	thread_mutex_acquire(&(buffer->mutex));
 
 	while ((buffer->flags & EBF_EOF) == 0)

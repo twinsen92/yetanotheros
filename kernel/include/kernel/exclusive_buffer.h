@@ -34,6 +34,8 @@ struct exclusive_buffer
 	uint8_t *head; /* Current buffer head. */
 	uint8_t *tail; /* Current buffer tail. */
 
+	bool multi_lock; /* Buffer locked for multiple operations. */
+
 	struct thread_mutex mutex; /* Buffer exclusive lock. */
 	struct thread_cond changed; /* Buffer changed wait condition. */
 };
@@ -43,6 +45,12 @@ void eb_create(struct exclusive_buffer *buffer, size_t size, uintptr_t alignment
 
 /* Locks the buffer. Frees underlying array and invalidates pointers. */
 void eb_free(struct exclusive_buffer *buffer);
+
+/* Lock buffer for multiple operations. Cannot use synchronous functions with it. */
+void eb_lock(struct exclusive_buffer *buffer);
+
+/* Unlock buffer after multiple operations. Cannot use synchronous functions with it. */
+void eb_unlock(struct exclusive_buffer *buffer);
 
 /* Reads a requested number of bytes. Waits until all of the bytes have been read into dest. */
 void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size);

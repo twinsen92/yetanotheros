@@ -22,6 +22,15 @@
 
 uint32_t yaos2_initialized;
 
+noreturn early_kernel_main(__unused void *cookie)
+{
+	/* This needs to be called from a thread, because it uses thread locks. */
+	debug_redirect_to_serial(serial_get_com1());
+
+	/* Continue on to the normal kernel main. */
+	kernel_main();
+}
+
 noreturn generic_x86_init(void)
 {
 	if (!mpt_scan())
@@ -57,7 +66,7 @@ noreturn generic_x86_init(void)
 	init_ioapics();
 	init_serial();
 
-	thread_create(PID_KERNEL, kernel_main, NULL, "kernel_main");
+	thread_create(PID_KERNEL, early_kernel_main, NULL, "kernel_main");
 
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;
