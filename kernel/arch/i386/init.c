@@ -4,6 +4,7 @@
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
+#include <kernel/devices/block.h>
 #include <arch/cpu.h>
 #include <arch/heap.h>
 #include <arch/init.h>
@@ -47,7 +48,7 @@ noreturn generic_x86_init(void)
 	init_idt();
 	init_isr();
 
-	/* Initialize shared subsystems. */
+	/* Initialize critical shared subsystems. */
 	init_paging();
 	init_kernel_heap(&(vm_map[VM_DYNAMIC_REGION]));
 
@@ -60,6 +61,9 @@ noreturn generic_x86_init(void)
 
 	/* Init SMP stuff. */
 	init_smp();
+
+	/* Init non-critical shared subsystems. */
+	init_bdev();
 
 	/* Init x86-specific devices. */
 	mpt_enum_ioapics();

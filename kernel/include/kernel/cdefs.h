@@ -16,4 +16,7 @@
 #define packed_struct struct __attribute__((packed))
 #define packed_union union __attribute__((packed))
 
+typedef unsigned int uint;
+typedef unsigned char byte;
+
 #endif
