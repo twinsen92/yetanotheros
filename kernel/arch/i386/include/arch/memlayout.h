@@ -244,15 +244,7 @@ struct vm_region
 
 #define VM_NOF_REGIONS 9
 
-/* Executable region indices, used by early_paging.c to initially map the kernel */
-
-#define VM_KERNEL_EXEC_RO_REGION 1
-#define VM_KERNEL_EXEC_RO2_REGION 3
-#define VM_KERNEL_EXEC_RW_REGION 4
-#define VM_KERNEL_BOOT_STACK_REGION 2
-
-/* Other regions */
-
+/* Special regions */
 #define VM_PALLOC_REGION 5
 #define VM_DYNAMIC_REGION 6
 

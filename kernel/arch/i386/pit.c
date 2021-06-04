@@ -1,8 +1,17 @@
 #include <kernel/cdefs.h>
 #include <kernel/cpu_spinlock.h>
 #include <kernel/debug.h>
-#include <arch/pit.h>
 #include <arch/portio.h>
+
+#define PIT_FREQ 1193180
+
+#define PIT_CHAN(c)				(0x40 + c)
+#define PIT_COMMAND				0x43
+#define PIT_CHAN2_OUTPUT		0x61
+
+#define PIT_CMD_CHAN(c)			(c << 6)
+#define PIT_CMD_2BYTE			0x30
+#define PIT_CMD_HW_RETR			0x02
 
 static struct cpu_spinlock pit_spinlock;
 

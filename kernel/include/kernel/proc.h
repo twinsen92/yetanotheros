@@ -9,9 +9,11 @@
 #define PROC_DEFUNCT		3 /* Process has exited and is waiting to be collected. */
 #define PROC_TRUNCATE		4 /* Process can be deleted. */
 
+typedef unsigned int pid_t;
+
 struct proc
 {
-	unsigned int pid;
+	pid_t pid;
 	int state;
 	char name[32];
 };

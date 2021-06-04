@@ -3,10 +3,11 @@
 #define _KERNEL_SCHEDULER_H
 
 #include <kernel/cdefs.h>
+#include <kernel/proc.h>
 #include <kernel/thread.h>
 
 /* Creates a thread in the process identified by pid. */
-tid_t thread_create(unsigned int pid, void (*entry)(void *), void *cookie, const char *name);
+tid_t thread_create(pid_t pid, void (*entry)(void *), void *cookie, const char *name);
 
 /* Forces the current thread to be rescheduled. */
 void thread_yield(void);

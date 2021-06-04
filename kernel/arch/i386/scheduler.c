@@ -336,7 +336,7 @@ static void thread_entry(void)
 }
 
 /* Creates a thread in the process identified by pid. */
-tid_t thread_create(unsigned int pid, void (*entry)(void *), void *cookie, const char *name)
+tid_t thread_create(pid_t pid, void (*entry)(void *), void *cookie, const char *name)
 {
 	tid_t tid;
 	struct x86_proc *proc;

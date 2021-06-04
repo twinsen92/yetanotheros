@@ -6,8 +6,7 @@
 #include <kernel/debug.h>
 #include <kernel/ticks.h>
 
-#define KERNEL_TID_IDLE 0
-#define TID_INVALID 0xffffffff
+#define TID_INVALID 0
 
 #define THREAD_NEW			0 /* Thread has just been created. */
 #define THREAD_RUNNING		1 /* Thread is currently running. */
