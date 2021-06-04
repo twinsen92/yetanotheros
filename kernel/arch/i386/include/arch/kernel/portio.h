@@ -1,6 +1,6 @@
-/* portio.h - functions used to do port I/O on x86 */
-#ifndef ARCH_I386_PORTIO_H
-#define ARCH_I386_PORTIO_H
+/* arch/kernel/portio.h - functions used to do port I/O on x86 */
+#ifndef ARCH_I386_KERNEL_PORTIO_H
+#define ARCH_I386_KERNEL_PORTIO_H
 
 #include <kernel/cdefs.h>
 

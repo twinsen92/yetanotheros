@@ -1,7 +1,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
-#include <arch/portio.h>
+#include <arch/kernel/portio.h>
 
 #define PIT_FREQ 1193180
 

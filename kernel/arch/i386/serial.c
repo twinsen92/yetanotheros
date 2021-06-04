@@ -9,10 +9,10 @@
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
-#include <arch/portio.h>
 #include <arch/scheduler.h>
 #include <arch/serial.h>
 #include <arch/cpu/apic.h>
+#include <arch/kernel/portio.h>
 
 /* TODO: Use linked list. */
 #define MAX_SUBSCRIBERS 8

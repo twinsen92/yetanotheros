@@ -1,5 +1,5 @@
 /* pic.c - handler for the Programmable Interrupt Controller */
-#include <arch/portio.h>
+#include <arch/kernel/portio.h>
 
 /* PIC ports */
 

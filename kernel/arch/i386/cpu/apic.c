@@ -11,10 +11,10 @@
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
 #include <arch/mpt.h>
-#include <arch/portio.h>
 #include <arch/pit.h>
 #include <arch/cpu/apic.h>
 #include <arch/cpu/apic_types.h>
+#include <arch/kernel/portio.h>
 
 /* TODO: Separate IOAPIC code from this file. */
 
