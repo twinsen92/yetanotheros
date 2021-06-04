@@ -1,23 +1,22 @@
 /* multiboot.S - x86 boot code. This file contains _start, which is the first procedure the bootloader
    calls. */
 
+#include <kernel/boot/multiboot.h>
 #include <arch/memlayout.h>
 #include <arch/cpu/paging_types.h>
 
-# Declare constants for the multiboot header.
-.set ALIGN,    1<<0             # align loaded modules on page boundaries
-.set MEMINFO,  1<<1             # provide memory map
-.set FLAGS,    ALIGN | MEMINFO  # this is the Multiboot 'flag' field
-.set MAGIC,    0x1BADB002       # 'magic number' lets bootloader find the header
-.set CHECKSUM, -(MAGIC + FLAGS) # checksum of above, to prove we are multiboot
+/* Declare constants for the multiboot header. */
+.set MB_FLAGS,		MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO
+.set MB_MAGIC,		MULTIBOOT_HEADER_MAGIC
+.set MB_CHECKSUM,	-(MB_MAGIC + MB_FLAGS)
 
-# Declare a header as in the Multiboot Standard.
+/* Declare a header as in the Multiboot Standard. */
 .section .multiboot
 .align 4096
-	.long MAGIC
-	.long FLAGS
-	.long CHECKSUM
-	# Reserve room for the rest of the multiboot header.
+	.long MB_MAGIC
+	.long MB_FLAGS
+	.long MB_CHECKSUM
+	/* Reserve room for the rest of the multiboot header. */
 	.skip 8180
 
 .data

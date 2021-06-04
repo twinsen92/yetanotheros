@@ -53,11 +53,6 @@ noreturn multiboot_x86_init(struct multiboot_info *info, uint32_t magic)
 	init_palloc();
 	walk_mmap(info);
 
-	/* Waste a few pages to see if palloc works. TODO: Remove this. */
-	palloc();
-	palloc();
-	palloc();
-
 	/* Continue the usual initialization. */
 	generic_x86_init();
 }
