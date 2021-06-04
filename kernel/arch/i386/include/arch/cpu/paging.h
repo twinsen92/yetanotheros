@@ -1,11 +1,11 @@
-/* paging.h - arch dependent declarations of x86 paging subsystem */
-#ifndef ARCH_I386_PAGING_H
-#define ARCH_I386_PAGING_H
+/* cpu/paging.h - arch dependent declarations of x86 paging subsystem */
+#ifndef ARCH_I386_CPU_PAGING_H
+#define ARCH_I386_CPU_PAGING_H
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <arch/memlayout.h>
-#include <arch/paging_types.h>
+#include <arch/cpu/paging_types.h>
 
 /* We want to keep the paging structures of the currently used page directory and the base kernel
    paging structures always mapped to the virtual memory space. We will use the two last directory

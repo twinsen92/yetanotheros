@@ -1,17 +1,17 @@
-/* cpu.h - x86 cpu state information */
+/* arch/cpu.h - x86 cpu state information */
 #ifndef ARCH_I386_CPU_H
 #define ARCH_I386_CPU_H
 
 #include <kernel/cdefs.h>
-#include <arch/apic.h>
-#include <arch/apic_types.h>
-#include <arch/gdt.h>
-#include <arch/idt.h>
 #include <arch/interrupts.h>
 #include <arch/proc.h>
-#include <arch/seg_types.h>
-#include <arch/selectors.h>
 #include <arch/thread.h>
+#include <arch/cpu/apic.h>
+#include <arch/cpu/apic_types.h>
+#include <arch/cpu/gdt.h>
+#include <arch/cpu/idt.h>
+#include <arch/cpu/seg_types.h>
+#include <arch/cpu/selectors.h>
 
 #define X86_CPU_MAGIC 0x86
 
@@ -109,9 +109,6 @@ static inline bool cpu_set_interrupts_with_cpu(struct x86_cpu *cpu, bool state)
 
 /* Sets the desired interrupts state for current CPU. Returns previous state. */
 #define cpu_set_interrupts(state) cpu_set_interrupts_with_cpu(cpu_current(), (state))
-
-/* Relax procedure to use when in a spin-loop */
-#define cpu_relax() asm volatile("pause": : :"memory")
 
 /* Returns the current state of EFLAGS. */
 static inline uint32_t cpu_get_eflags()

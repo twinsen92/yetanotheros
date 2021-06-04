@@ -1,11 +1,11 @@
-/* idt.c - x86 IDT handler code */
+/* cpu/idt.c - x86 IDT handler code */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
-#include <arch/idt.h>
 #include <arch/interrupts.h>
-#include <arch/seg_types.h>
-#include <arch/selectors.h>
+#include <arch/cpu/idt.h>
+#include <arch/cpu/seg_types.h>
+#include <arch/cpu/selectors.h>
 
 static seg_t idt[IDT_NOF_ENTRIES];
 static struct dtr idtr = { sizeof(idt), (uint32_t)&idt };

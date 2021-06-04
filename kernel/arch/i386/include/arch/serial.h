@@ -1,9 +1,6 @@
 #ifndef ARCH_I386_SERIAL_H
 #define ARCH_I386_SERIAL_H
 
-#include <kernel/cpu_spinlock.h>
-#include <kernel/exclusive_buffer.h>
-
 #define COM1 0x3f8
 #define COM2 0x2f8
 

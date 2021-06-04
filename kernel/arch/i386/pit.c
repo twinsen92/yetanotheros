@@ -1,5 +1,5 @@
 #include <kernel/cdefs.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <arch/portio.h>
 

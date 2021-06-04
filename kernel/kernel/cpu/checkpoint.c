@@ -1,9 +1,6 @@
-/* cpu_checkpoint.c - spin checkpoint for CPUs */
+/* checkpoint.c - spin checkpoint for CPUs */
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
-#include <kernel/cpu_checkpoint.h>
-#include <kernel/interrupts.h>
-#include <arch/cpu.h>
 
 void cpu_checkpoint_create(struct cpu_checkpoint *cp)
 {

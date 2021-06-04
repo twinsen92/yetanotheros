@@ -1,13 +1,11 @@
 /* thread_mutex.c - x86 implementation of thread_mutex */
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
-#include <kernel/interrupts.h>
 #include <kernel/thread.h>
 #include <arch/cpu.h>
 #include <arch/scheduler.h>
 #include <arch/thread.h>
-
-#define asm_barrier() asm volatile ("" : : : "memory")
 
 void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned int line)
 {
@@ -42,7 +40,7 @@ void thread_mutex_acquire(struct thread_mutex *mutex)
 	while (atomic_exchange(&(mutex->locked), true))
 		sched_thread_wait(&(mutex->wait_cond), NULL);
 
-	asm_barrier();
+	cpu_memory_barrier();
 
 	mutex->tid = thread->noarch.tid;
 
@@ -71,7 +69,7 @@ void thread_mutex_release(struct thread_mutex *mutex)
 	debug_clear_call_stack(&(mutex->lock_call_stack));
 #endif
 
-	asm_barrier();
+	cpu_memory_barrier();
 
 	/* Actually release the mutex. */
 	atomic_store(&(mutex->locked), false);

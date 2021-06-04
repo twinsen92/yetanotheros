@@ -7,8 +7,8 @@
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
-#include <arch/selectors.h>
 #include <arch/thread.h>
+#include <arch/cpu/selectors.h>
 
 uint32_t struct_x86_thread_offsetof_esp = offsetof(struct x86_thread, esp);
 static atomic_uint current_tid = 1;

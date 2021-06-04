@@ -4,7 +4,6 @@
 #include <kernel/debug.h>
 #include <kernel/init.h>
 #include <kernel/utils.h>
-#include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/mpt.h>
 #include <arch/mpt_types.h>

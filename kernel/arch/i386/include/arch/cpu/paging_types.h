@@ -1,6 +1,6 @@
-/* paging_types.h - x86 paging types */
-#ifndef ARCH_I386_PAGING_TYPES_H
-#define ARCH_I386_PAGING_TYPES_H
+/* cpu/paging_types.h - x86 paging types */
+#ifndef ARCH_I386_CPU_PAGING_TYPES_H
+#define ARCH_I386_CPU_PAGING_TYPES_H
 
 /* Some bit constants for flags fields. */
 

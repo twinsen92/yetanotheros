@@ -37,7 +37,7 @@ SECTIONS
 
 		__kernel_ap_entry_begin = . ;
 
-		arch/i386/ap_entry.o
+		arch/i386/cpu/ap_entry.o
 
 		. = ALIGN(4K);
 		__kernel_ap_entry_end = . ;

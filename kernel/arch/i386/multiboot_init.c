@@ -5,7 +5,7 @@
 #include <arch/init.h>
 #include <arch/memlayout.h>
 #include <arch/palloc.h>
-#include <arch/paging.h>
+#include <arch/cpu/paging.h>
 
 static const char *mb_mmap_type_texts[] = {
 	"invalid",

@@ -3,14 +3,11 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
-#include <kernel/interrupts.h>
 #include <kernel/scheduler.h>
 #include <kernel/thread.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
-#include <arch/paging.h>
 #include <arch/scheduler.h>
-#include <arch/selectors.h>
 
 static void (*handlers[ISR_MAX])(struct isr_frame*);
 
@@ -19,7 +16,7 @@ void generic_interrupt_handler(struct isr_frame *frame)
 {
 	uint32_t cr2, cr3;
 	void (*handler)(struct isr_frame*);
-	
+
 	asm volatile ("movl %%cr2, %0" : "=r" (cr2));
 	asm volatile ("movl %%cr3, %0" : "=r" (cr3));
 

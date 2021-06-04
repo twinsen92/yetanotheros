@@ -1,12 +1,12 @@
-/* segmentation.c - x86 segmentation handling code */
+/* cpu/segmentation.c - x86 segmentation handling code */
 
 #include <kernel/cdefs.h>
-#include <kernel/interrupts.h>
+#include <kernel/cpu.h>
 #include <kernel/utils.h>
 #include <arch/cpu.h>
-#include <arch/gdt.h>
-#include <arch/seg_types.h>
-#include <arch/selectors.h>
+#include <arch/cpu/gdt.h>
+#include <arch/cpu/seg_types.h>
+#include <arch/cpu/selectors.h>
 
 /* Initializes the GDT for the current CPU. */
 void init_gdt(void)

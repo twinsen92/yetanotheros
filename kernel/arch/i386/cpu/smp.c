@@ -2,15 +2,16 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
 #include <kernel/utils.h>
-#include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/init.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
-#include <arch/paging.h>
+#include <arch/cpu/apic.h>
+#include <arch/cpu/paging.h>
 
 packed_struct ap_entry_args
 {

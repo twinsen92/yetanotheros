@@ -1,20 +1,18 @@
 /* proc.c - x86 process structures and process list manager */
 #include <kernel/cdefs.h>
-#include <kernel/cpu_checkpoint.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
-#include <kernel/interrupts.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/thread.h>
 #include <kernel/ticks.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
-#include <arch/paging.h>
 #include <arch/proc.h>
-#include <arch/selectors.h>
 #include <arch/thread.h>
+#include <arch/cpu/paging.h>
+#include <arch/cpu/selectors.h>
 
 /* Scheduler lock. This applies to all structures used by the scheduler on all CPUs. */
 static struct cpu_spinlock global_scheduler_lock;

@@ -4,21 +4,21 @@
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
-#include <arch/apic.h>
 #include <arch/cpu.h>
-#include <arch/gdt.h>
 #include <arch/heap.h>
-#include <arch/idt.h>
 #include <arch/init.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
 #include <arch/mpt.h>
-#include <arch/paging.h>
 #include <arch/pic.h>
 #include <arch/serial.h>
 #include <arch/scheduler.h>
-#include <arch/smp.h>
 #include <arch/thread.h>
+#include <arch/cpu/apic.h>
+#include <arch/cpu/gdt.h>
+#include <arch/cpu/idt.h>
+#include <arch/cpu/paging.h>
+#include <arch/cpu/smp.h>
 
 uint32_t yaos2_initialized;
 

@@ -1,10 +1,9 @@
 /* debug.c - x86 kernel/debug.h implementation */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/exclusive_buffer.h>
 #include <kernel/heap.h>
-#include <kernel/interrupts.h>
 #include <kernel/printf.h>
 #include <kernel/thread.h>
 #include <kernel/devices/serial.h>

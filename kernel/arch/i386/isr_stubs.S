@@ -1,5 +1,5 @@
 /* isr_stubs.S - interrupt handler stubs, which redirect to generic_interrupt_handler() */
-#include <arch/selectors.h>
+#include <arch/cpu/selectors.h>
 
 .text
 .global isr_entry

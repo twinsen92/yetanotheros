@@ -2,7 +2,7 @@
    calls. */
 
 #include <arch/memlayout.h>
-#include <arch/paging_types.h>
+#include <arch/cpu/paging_types.h>
 
 # Declare constants for the multiboot header.
 .set ALIGN,    1<<0             # align loaded modules on page boundaries

@@ -1,14 +1,14 @@
-/* cpu.c - holder of the cpu information */
+/* cpu/cpu.c - holder of the cpu information */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
-#include <kernel/interrupts.h>
 #include <kernel/utils.h>
-#include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
-#include <arch/paging.h>
+#include <arch/cpu/apic.h>
+#include <arch/cpu/paging.h>
 
 #define MAX_CPUS 8
 #define BOOT_CPU 0
@@ -57,18 +57,6 @@ void cpu_set_boot_cpu(void)
 	/* We do not want to do this after initialization... */
 	kassert(is_yaos2_initialized() == false);
 	boot_lapic_id = lapic_get_id();
-}
-
-/* Get the number of CPUs. */
-unsigned int get_nof_cpus(void)
-{
-	return nof_cpus;
-}
-
-/* Get the number of active CPUs. */
-unsigned int get_nof_active_cpus(void)
-{
-	return atomic_load(&nof_active_cpus);
 }
 
 /* Enumerates other CPUs. Call with interrupts disabled. */
@@ -178,7 +166,19 @@ _cpu_set_cr3_redundant:
 	return prev_cr3;
 }
 
-/* kernel/interrupts.h interface */
+/* kernel/cpu.h interface */
+
+/* Get the number of CPUs. */
+unsigned int get_nof_cpus(void)
+{
+	return nof_cpus;
+}
+
+/* Get the number of active CPUs. */
+unsigned int get_nof_active_cpus(void)
+{
+	return atomic_load(&nof_active_cpus);
+}
 
 void push_no_interrupts(void)
 {

@@ -1,6 +1,6 @@
-/* apic_types.h - APIC related types and constants */
-#ifndef ARCH_I386_APIC_TYPES_H
-#define ARCH_I386_APIC_TYPES_H
+/* cpu/apic_types.h - APIC related types and constants */
+#ifndef ARCH_I386_CPU_APIC_TYPES_H
+#define ARCH_I386_CPU_APIC_TYPES_H
 
 #include <kernel/cdefs.h>
 

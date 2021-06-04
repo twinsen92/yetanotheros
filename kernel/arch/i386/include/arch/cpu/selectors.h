@@ -1,6 +1,6 @@
-/* selectors.h - YAOS2 x86 GDT selectors */
-#ifndef ARCH_I386_SELECTORS_H
-#define ARCH_I386_SELECTORS_H
+/* cpu/selectors.h - YAOS2 x86 GDT selectors */
+#ifndef ARCH_I386_CPU_SELECTORS_H
+#define ARCH_I386_CPU_SELECTORS_H
 
 #define YAOS2_GDT_NOF_ENTRIES 6
 

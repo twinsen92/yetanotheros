@@ -1,13 +1,11 @@
-/* apic.c - handler for the Advanced Programmable Interrupt Controller */
+/* cpu/apic.c - handler for the Advanced Programmable Interrupt Controller */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
 #include <kernel/init.h>
 #include <kernel/queue.h>
-#include <arch/apic.h>
-#include <arch/apic_types.h>
 #include <arch/cmos.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
@@ -15,6 +13,10 @@
 #include <arch/mpt.h>
 #include <arch/portio.h>
 #include <arch/pit.h>
+#include <arch/cpu/apic.h>
+#include <arch/cpu/apic_types.h>
+
+/* TODO: Separate IOAPIC code from this file. */
 
 /* kernel/ticks.h export */
 atomic_uint_fast64_t current_ticks;

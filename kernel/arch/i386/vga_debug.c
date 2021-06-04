@@ -1,13 +1,13 @@
 /* vga_debug.c - VGA backed debug implementation */
-
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/printf.h>
-#include <arch/apic.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
 #include <arch/vga.h>
+#include <arch/cpu/apic.h>
 
 static const size_t VGA_WIDTH = 80;
 static const size_t VGA_HEIGHT = 25;

@@ -1,10 +1,10 @@
-/* idt.h - x86 IDT structures and declarations */
-#ifndef ARCH_I386_IDT_H
-#define ARCH_I386_IDT_H
+/* cpu/idt.h - x86 IDT structures and declarations */
+#ifndef ARCH_I386_CPU_IDT_H
+#define ARCH_I386_CPU_IDT_H
 
 #include <kernel/cdefs.h>
-#include <arch/seg_types.h>
 #include <arch/interrupts.h>
+#include <arch/cpu/seg_types.h>
 
 /* Segement bits. All bits are shifted 32 bits to the right. */
 

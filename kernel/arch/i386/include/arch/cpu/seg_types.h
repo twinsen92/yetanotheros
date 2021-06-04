@@ -1,6 +1,6 @@
-/* seg_types.h - x86 segmentation generic structures and declarations */
-#ifndef ARCH_I386_SEG_TYPES_H
-#define ARCH_I386_SEG_TYPES_H
+/* cpu/seg_types.h - x86 segmentation generic structures and declarations */
+#ifndef ARCH_I386_CPU_SEG_TYPES_H
+#define ARCH_I386_CPU_SEG_TYPES_H
 
 /* Segment bits. All bits are shifted 32 bits to the right. */
 

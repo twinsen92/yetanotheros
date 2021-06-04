@@ -1,10 +1,10 @@
-/* apic.h - handler for the Advanced Programmable Interrupt Controller */
-#ifndef ARCH_I386_APIC_H
-#define ARCH_I386_APIC_H
+/* cpu/apic.h - handler for the Advanced Programmable Interrupt Controller */
+#ifndef ARCH_I386_CPU_APIC_H
+#define ARCH_I386_CPU_APIC_H
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
-#include <arch/apic_types.h>
+#include <arch/cpu/apic_types.h>
 
 /* Local APIC */
 

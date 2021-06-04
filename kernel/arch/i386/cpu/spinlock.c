@@ -1,12 +1,8 @@
-/* cpu_spinlock.c - x86 CPU spinlock implementation */
+/* cpu/spinlock.c - x86 CPU spinlock implementation */
 #include <kernel/cdefs.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
-#include <kernel/interrupts.h>
 #include <arch/cpu.h>
-
-/* Compile read-write barrier */
-#define asm_barrier() asm volatile ("" : : : "memory")
 
 static inline int asm_xchg(void *ptr, int x)
 {
@@ -64,7 +60,7 @@ void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 	else
 		spin_uninterruptible(spinlock);
 
-	asm_barrier();
+	cpu_memory_barrier();
 
 	cpu = cpu_current_or_null();
 
@@ -94,7 +90,7 @@ void cpu_spinlock_release(struct cpu_spinlock *spinlock)
 	debug_clear_call_stack(&(spinlock->lock_call_stack));
 #endif
 
-	asm_barrier();
+	cpu_memory_barrier();
 
 	asm volatile ("movl $0, %0" : "+m" (spinlock->locked));
 

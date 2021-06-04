@@ -1,11 +1,11 @@
-/* paging.c - memory paging subsystem */
+/* cpu/paging.c - memory paging subsystem */
 #include <kernel/addr.h>
-#include <kernel/cpu_spinlock.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <arch/cpu.h>
-#include <arch/paging.h>
 #include <arch/palloc.h>
 #include <arch/memlayout.h>
+#include <arch/cpu/paging.h>
 
 pde_t *const current_pd = (pde_t *const) 0xfffff000;
 pte_t *const current_page_tables = (pte_t *const) 0xffc00000;

@@ -1,8 +1,8 @@
-/* gdt.h - x86 GDT structures and declarations */
-#ifndef ARCH_I386_GDT_H
-#define ARCH_I386_GDT_H
+/* cpu/gdt.h - x86 GDT structures and declarations */
+#ifndef ARCH_I386_CPU_GDT_H
+#define ARCH_I386_CPU_GDT_H
 
-#include <arch/seg_types.h>
+#include <arch/cpu/seg_types.h>
 
 /* Segement bits. All bits are shifted 32 bits to the right. */
 
