@@ -332,7 +332,7 @@ void init_ioapics(void)
 }
 
 /* Assigns interrupt vector to a given LAPIC (aka CPU). */
-void ioapic_assign(uint8_t vector, lapic_id_t lapic_id)
+void ioapic_assign(__unused uint8_t vector, __unused lapic_id_t lapic_id)
 {
 	kpanic("ioapic_assign(): not implemented");
 }

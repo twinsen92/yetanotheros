@@ -36,7 +36,7 @@ static void kthread_1(__unused void *arg)
 		thread_sleep(200);
 		v = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, 4096);
 
-		eb_try_write(&eb, "BBB ", 4);
+		eb_try_write(&eb, (const uint8_t*)"BBB ", 4);
 		serial_write(serial_get_com1());
 	}
 }

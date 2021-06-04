@@ -160,7 +160,7 @@ void early_init_kernel_paging(void)
 	}
 
 	/* Fill in the page table addresses in the page directory. */
-	for (int i = 0; i < PD_LENGTH; i++)
+	for (unsigned int i = 0; i < PD_LENGTH; i++)
 	{
 		if (pde_get_paddr(new_kernel_pd[i]) == PHYS_NULL)
 			new_kernel_pd[i] |= km_paddr(new_kernel_page_tables + (i * PT_LENGTH));

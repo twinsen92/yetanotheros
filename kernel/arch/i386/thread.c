@@ -15,6 +15,8 @@ static atomic_uint current_tid = 1;
 
 #ifdef KERNEL_DEBUG
 #define MAX_THREADS 128
+/* An array containing up to MAX_THREADS pointers to thread structures. This is here only to ease
+   debugging of memory dumps. */
 struct x86_thread *debug_x86_threads[MAX_THREADS];
 #endif
 
@@ -75,7 +77,7 @@ void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *pr
 
 	thread->stack = stack;
 	thread->stack_size = stack_size;
-	thread->ebp = (uint32_t)thread->stack + stack_size - 32; /* TODO: Why???? */
+	thread->ebp = (uint32_t)thread->stack + stack_size;
 	thread->esp = thread->ebp;
 
 	/* Don't need to set up a ring 0 stack for a kernel thread. */

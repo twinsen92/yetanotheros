@@ -82,7 +82,7 @@ void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *))
 
 	cur_lapic_id = lapic_get_id();
 
-	for (int i = 0; i < nof_cpus; i++)
+	for (unsigned int i = 0; i < nof_cpus; i++)
 		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id != cur_lapic_id)
 			receiver(&cpus[i]);
 }
@@ -104,7 +104,7 @@ struct x86_cpu *cpu_current_or_null(void)
 
 	lapic_id = lapic_get_id();
 
-	for (int i = 0; i < nof_cpus; i++)
+	for (unsigned int i = 0; i < nof_cpus; i++)
 		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id == lapic_id)
 			return &cpus[i];
 

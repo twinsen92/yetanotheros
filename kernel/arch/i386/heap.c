@@ -250,7 +250,7 @@ void kfree(vaddr_t v)
 	cpu_spinlock_release(&spinlock);
 }
 
-paddr_t ktranslate(vaddr_t v)
+paddr_t ktranslate(__unused vaddr_t v)
 {
 	/* We can check this because it only changes in initialization. */
 	if (!initialized)

@@ -25,7 +25,7 @@ static struct cpu_checkpoint scheduler_checkpoint;
 /* Process list. */
 static struct x86_proc kernel_process;
 static struct x86_proc_list processes;
-static atomic_uint next_pid = 1;
+__unused static atomic_uint next_pid = 1;
 
 /* Thread queue. */
 static STAILQ_HEAD(x86_thread_queue, x86_thread) queue;
