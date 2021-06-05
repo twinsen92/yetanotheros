@@ -179,6 +179,8 @@ static void mpt_dump_receiver(const union mp_conf_entry *entry)
 			lint->dest_lapic_int);
 		break;
 	}
+
+	debug_flush();
 }
 
 /* Dump all MP entries to kdprintf. */

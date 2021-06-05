@@ -3,6 +3,7 @@
 #define _KERNEL_THREAD_H
 
 #include <kernel/cdefs.h>
+#include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/ticks.h>
 
@@ -43,10 +44,10 @@ struct thread_cond
 /* thread_mutex - a preemtible mutex that puts waiting threads into THREAD_BLOCKED state */
 struct thread_mutex
 {
-	/* Is the mutex acquired? */
-	atomic_bool locked;
-
+	struct cpu_spinlock spinlock;
 	struct thread_cond wait_cond;
+
+	bool locked; /* Is the mutex acquired? */
 
 	/* Holder of the mutex. */
 	tid_t tid;

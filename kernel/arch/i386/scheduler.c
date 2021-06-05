@@ -264,18 +264,20 @@ static void reschedule(void)
 	x86_thread_switch(thread, cpu_current()->scheduler);
 }
 
-/* Make the current thread wait on the given condition. Optionally, a mutex can be released and
-   re-acquired. */
-void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex)
+/* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
+void sched_thread_wait(struct thread_cond *cond, struct cpu_spinlock *spinlock)
 {
 	struct x86_thread *thread;
 
-	cpu_spinlock_acquire(&global_scheduler_lock);
+	kassert(cond && spinlock);
 
-	/* We release the mutex while holding the global scheduler lock. This way we can be sure no
-	   other thread notifies the mutex between release and reschedule() */
-	if (mutex)
-		thread_mutex_release(mutex);
+	 /* We release the spinlock while holding the global scheduler lock. This way we can be sure no
+		other thread notifies the condition between spinlock release and reschedule() */
+	if (spinlock != &global_scheduler_lock)
+	{
+		cpu_spinlock_acquire(&global_scheduler_lock);
+		cpu_spinlock_release(spinlock);
+	}
 
 	thread = get_current_thread();
 	atomic_fetch_add(&(cond->num_waiting), 1);
@@ -285,13 +287,15 @@ void sched_thread_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 	atomic_fetch_sub(&(cond->num_waiting), 1);
 	thread->noarch.cond = NULL;
 
-	cpu_spinlock_release(&global_scheduler_lock);
 
-	/* We wait on the mutex outside of the section where we hold the global scheduler lock. This
+	/* We wait on the spinlock outside of the section where we hold the global scheduler lock. This
 	   way we can avoid getting stuck on acquire and never being able to schedule the thread
 	   currently holding it. */
-	if (mutex)
-		thread_mutex_acquire(mutex);
+	if (spinlock != &global_scheduler_lock)
+	{
+		cpu_spinlock_release(&global_scheduler_lock);
+		cpu_spinlock_acquire(spinlock);
+	}
 }
 
 /* Notify a thread waiting on the given mutex that it is unlocked. Puts the thread at the beginning

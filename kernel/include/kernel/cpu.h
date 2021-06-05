@@ -17,14 +17,12 @@
 
 struct cpu_spinlock
 {
-	/* Is the lock acquired? */
-	int locked;
-
+	int locked; /* Is the lock acquired? */
 	int cpu; /* The number of the holding CPU. */
 
 #ifdef KERNEL_DEBUG
 	const char *name; /* Name of the CPU spinlock. */
-
+	uint tid; /* TID of the thread the CPU was running when it was locked. */
 	struct debug_call_stack lock_call_stack;
 #endif
 };

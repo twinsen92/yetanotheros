@@ -9,9 +9,10 @@
 
 void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned int line)
 {
-	atomic_store(&(mutex->locked), false);
-	mutex->tid = TID_INVALID;
+	cpu_spinlock_create(&(mutex->spinlock), "thread mutex spinlock");
 	thread_cond_create(&(mutex->wait_cond));
+	mutex->locked = false;
+	mutex->tid = TID_INVALID;
 #ifdef KERNEL_DEBUG
 	mutex->creation_file = file;
 	mutex->creation_line = line;
@@ -19,48 +20,56 @@ void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned
 #endif
 }
 
-void thread_mutex_acquire(struct thread_mutex *mutex)
+static inline bool unsafe_mutex_held(struct thread_mutex *mutex)
 {
 	struct x86_thread *thread;
 
-	/* We don't want to get rescheduled when using get_current_thread() and modifying the mutex
-	  object. */
-	push_no_interrupts();
+	thread = get_current_thread();
+
+	if (thread == NULL)
+		kpanic("unsafe_mutex_held(): no thread running");
+
+	return mutex->locked && (mutex->tid == thread->noarch.tid);
+}
+
+static inline void unsafe_mutex_acquire(struct thread_mutex *mutex)
+{
+	struct x86_thread *thread;
 
 	thread = get_current_thread();
 
 	if (thread == NULL)
 		kpanic("thread_mutex_acquire(): no thread running");
 
-	if (thread_mutex_held(mutex))
+	if (unsafe_mutex_held(mutex))
 		kpanic("thread_mutex_acquire(): on held lock");
 
 	/* Check in a loop if we have locked the mutex with an atomic exchange. If not, go into blocked
 	   state. Another thread calling release on this mutex will notify and wake us up. */
-	while (atomic_exchange(&(mutex->locked), true))
-		sched_thread_wait(&(mutex->wait_cond), NULL);
+	while (mutex->locked)
+		sched_thread_wait(&(mutex->wait_cond), &(mutex->spinlock));
 
-	cpu_memory_barrier();
-
+	mutex->locked = true;
 	mutex->tid = thread->noarch.tid;
 
 #ifdef KERNEL_DEBUG
 	debug_fill_call_stack(&(mutex->lock_call_stack));
 #endif
-
-	pop_no_interrupts();
 }
 
-void thread_mutex_release(struct thread_mutex *mutex)
+void thread_mutex_acquire(struct thread_mutex *mutex)
 {
-	/* We do not want to get rescheduled while accessing the current thread object and modifying
-	   the mutex object. */
-	push_no_interrupts();
+	cpu_spinlock_acquire(&(mutex->spinlock));
+	unsafe_mutex_acquire(mutex);
+	cpu_spinlock_release(&(mutex->spinlock));
+}
 
+static inline void unsafe_mutex_release(struct thread_mutex *mutex)
+{
 	if (mutex->tid == TID_INVALID)
 		kpanic("thread_mutex_release(): called on an unheld mutex");
 
-	if (mutex->tid != TID_INVALID && !thread_mutex_held(mutex))
+	if (mutex->tid != TID_INVALID && !unsafe_mutex_held(mutex))
 		kpanic("thread_mutex_release(): called on an unheld mutex");
 
 	mutex->tid = TID_INVALID;
@@ -69,33 +78,28 @@ void thread_mutex_release(struct thread_mutex *mutex)
 	debug_clear_call_stack(&(mutex->lock_call_stack));
 #endif
 
-	cpu_memory_barrier();
-
 	/* Actually release the mutex. */
-	atomic_store(&(mutex->locked), false);
+	mutex->locked = false;
+}
+
+void thread_mutex_release(struct thread_mutex *mutex)
+{
+	cpu_spinlock_acquire(&(mutex->spinlock));
+	unsafe_mutex_release(mutex);
 
 	/* Notify a thread waiting on the internal conditon. */
 	sched_thread_notify_one(&(mutex->wait_cond));
 
-	/* Continue with preemption enabled. */
-	pop_no_interrupts();
+	cpu_spinlock_release(&(mutex->spinlock));
 }
 
 bool thread_mutex_held(struct thread_mutex *mutex)
 {
 	bool ret;
-	struct x86_thread *thread;
 
-	push_no_interrupts();
-
-	thread = get_current_thread();
-
-	if (thread == NULL)
-		kpanic("thread_mutex_held(): no thread running");
-
-	ret = atomic_load(&(mutex->locked)) && mutex->tid == thread->noarch.tid;
-
-	pop_no_interrupts();
+	cpu_spinlock_acquire(&(mutex->spinlock));
+	ret = unsafe_mutex_held(mutex);
+	cpu_spinlock_release(&(mutex->spinlock));
 
 	return ret;
 }
@@ -111,7 +115,21 @@ void _thread_cond_create(struct thread_cond *cond, const char *file, unsigned in
 
 void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 {
-	sched_thread_wait(cond, mutex);
+	cpu_spinlock_acquire(&(mutex->spinlock));
+
+	if (!unsafe_mutex_held(mutex))
+		kpanic("thread_cond_wait(): on unheld mutex");
+
+	unsafe_mutex_release(mutex);
+
+	/* Notify a thread waiting on the internal conditon. */
+	sched_thread_notify_one(&(mutex->wait_cond));
+
+	sched_thread_wait(cond, &(mutex->spinlock));
+
+	unsafe_mutex_acquire(mutex);
+
+	cpu_spinlock_release(&(mutex->spinlock));
 }
 
 void thread_cond_notify(struct thread_cond *cond)

@@ -60,6 +60,15 @@ redundant:
 	thread_mutex_release(&serial_mutex);
 }
 
+/* Wait for debug output to be flushed. */
+void debug_flush(void)
+{
+	if (atomic_load(&debug_serial_enabled))
+	{
+		eb_flush(debug_buffer);
+	}
+}
+
 static void unsafe_serial_putchar(char c)
 {
 	eb_try_write(debug_buffer, (uint8_t*)&c, 1);

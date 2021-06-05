@@ -9,7 +9,6 @@
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
-#include <arch/scheduler.h>
 #include <arch/serial.h>
 #include <arch/cpu/apic.h>
 #include <arch/kernel/portio.h>
@@ -184,7 +183,7 @@ static void serial_handler_main(void *cookie)
 
 		/* Wait until we have data available. */
 		while (!serial_received(s->port) && !is_transmit_empty(s->port))
-			sched_thread_wait(&(s->data_available), &(s->mutex));
+			thread_cond_wait(&(s->data_available), &(s->mutex));
 
 		if (serial_received(s->port))
 			try_serial_read(s);

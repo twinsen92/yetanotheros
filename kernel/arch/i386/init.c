@@ -4,7 +4,6 @@
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
-#include <kernel/devices/block.h>
 #include <arch/cpu.h>
 #include <arch/heap.h>
 #include <arch/init.h>
@@ -27,6 +26,9 @@ noreturn early_kernel_main(__unused void *cookie)
 {
 	/* This needs to be called from a thread, because it uses thread locks. */
 	debug_redirect_to_serial(serial_get_com1());
+
+	/* Dump the contents of MP tables to the serial port. */
+	mpt_dump();
 
 	/* Continue on to the normal kernel main. */
 	kernel_main();
@@ -61,9 +63,6 @@ noreturn generic_x86_init(void)
 
 	/* Init SMP stuff. */
 	init_smp();
-
-	/* Init non-critical shared subsystems. */
-	init_bdev();
 
 	/* Init x86-specific devices. */
 	mpt_enum_ioapics();

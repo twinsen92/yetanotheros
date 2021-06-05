@@ -18,6 +18,9 @@ void init_debug(void);
 /* Redirects debug output to the given serial port. */
 void debug_redirect_to_serial(struct serial *s);
 
+/* Wait for debug output to be flushed. */
+void debug_flush(void);
+
 /* Debug formatted printer. */
 int kdprintf(const char* __restrict, ...);
 
