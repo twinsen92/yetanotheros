@@ -3,6 +3,7 @@
 #include <kernel/debug.h>
 #include <kernel/test.h>
 #include <kernel/devices/block.h>
+#include <kernel/devices/pci.h>
 
 noreturn kernel_main(void)
 {
@@ -10,6 +11,7 @@ noreturn kernel_main(void)
 
 	/* Init non-critical shared subsystems. */
 	init_bdev();
+	init_pci();
 
 	kalloc_test_main();
 	while(1);

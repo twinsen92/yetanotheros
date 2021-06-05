@@ -31,6 +31,7 @@ KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 kernel/cpu/checkpoint.o \
 kernel/devices/block.o \
+kernel/devices/pci.o \
 kernel/test/kalloc_test.o \
 kernel/exclusive_buffer.o \
 kernel/kernel.o \
