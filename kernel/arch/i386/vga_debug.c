@@ -115,6 +115,7 @@ noreturn _kpanic(const char *reason, const char *file, unsigned int line)
 	cpu_force_cli();
 
 	/* Enumerate other CPUs and send panic IPIs to them. */
+	cpu_current()->preempt_disabled++;
 	cpu_enumerate_other_cpus(panic_enumerate);
 
 	/* Reset to 0,0 and set an intimidating red colour. */

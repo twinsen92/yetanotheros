@@ -53,7 +53,7 @@ void x86_thread_construct_empty(struct x86_thread *thread, struct x86_proc *proc
 /* Builds a kernel x86_thread object. */
 void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *proc,
 	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
-	void *cookie);
+	void *cookie, bool int_enabled);
 
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */

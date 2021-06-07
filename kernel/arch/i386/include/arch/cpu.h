@@ -37,6 +37,7 @@ struct x86_cpu
 	volatile struct tss tss;
 
 	/* Scheduler fields. */
+	int preempt_disabled;
 	struct x86_thread scheduler_thread;
 	struct x86_thread *scheduler;
 	struct x86_thread *thread;
@@ -52,9 +53,6 @@ void cpu_set_boot_cpu(void);
 
 /* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *));
-
-/* Gets the current CPU object or NULL if un-initialized. */
-struct x86_cpu *cpu_current_or_null(void);
 
 /* Gets the current CPU object. */
 struct x86_cpu *cpu_current(void);

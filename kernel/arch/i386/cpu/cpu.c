@@ -13,9 +13,25 @@
 #define MAX_CPUS 8
 #define BOOT_CPU 0
 
-/* We only have one cpu right now. */
-lapic_id_t boot_lapic_id;
 static struct x86_cpu cpus[MAX_CPUS];
+
+/* Initial CPU, when we have not enumerated CPUs yet. */
+static struct x86_cpu initial_cpu = {
+	.magic = X86_CPU_MAGIC,
+	.num = 0,
+	.active = false,
+	.lapic_id = 0xff,
+
+	.int_enabled = false,
+	.cli_stack = 0,
+
+	.preempt_disabled = 0,
+	.scheduler = NULL,
+	.thread = NULL,
+};
+
+lapic_id_t boot_lapic_id;
+
 static unsigned int nof_cpus = 0;
 static atomic_uint nof_active_cpus = 0;
 
@@ -29,6 +45,9 @@ void cpu_add(lapic_id_t lapic_id)
 
 	/* We're pretty relaxed in this function for a reason... */
 	kassert(is_yaos2_initialized() == false);
+
+	if (initial_cpu.int_enabled || initial_cpu.cli_stack > 0 || initial_cpu.preempt_disabled > 0)
+		kpanic("cpu_add(): initial CPU has state information");
 
 	cpus[nof_cpus].magic = X86_CPU_MAGIC;
 	cpus[nof_cpus].num = nof_cpus;
@@ -44,6 +63,7 @@ void cpu_add(lapic_id_t lapic_id)
 	if (cpu_has_cpuid() == false)
 		kpanic("init_cpu(): CPU does not support CPUID");
 
+	cpus[nof_cpus].preempt_disabled = 0;
 	kmemset(&(cpus[nof_cpus].scheduler_thread), 0, sizeof(cpus[nof_cpus].scheduler_thread));
 	cpus[nof_cpus].scheduler = NULL;
 	cpus[nof_cpus].thread = NULL;
@@ -62,55 +82,37 @@ void cpu_set_boot_cpu(void)
 /* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *))
 {
+	struct x86_cpu *cpu;
+
 	lapic_id_t cur_lapic_id;
 
-	/* This is dangerous with interrupts on. */
-	if (cpu_get_eflags() & EFLAGS_IF)
-		kpanic("cpu_current_or_null(): called with interrupts enabled");
+	/* Check for calls with preemption enabled. */
+	preempt_disable();
 
 	cur_lapic_id = lapic_get_id();
 
 	for (unsigned int i = 0; i < nof_cpus; i++)
 		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id != cur_lapic_id)
 			receiver(&cpus[i]);
+
+	preempt_enable();
 }
 
-/* Gets the current CPU object or NULL if un-initialized. */
-struct x86_cpu *cpu_current_or_null(void)
+/* Gets the current CPU object. */
+struct x86_cpu *cpu_current(void)
 {
 	lapic_id_t lapic_id;
 
 	/* We can do this check earlier because if there are no CPUs registered, we don't actually
 	   have to be worried of getting rescheduled... */
 	if (nof_cpus == 0)
-		return NULL;
-
-	/* Need to be called with interrupts off so that we don't get rescheduled between checking
-	   the LAPIC ID and scanning the cpus table. */
-	if (cpu_get_eflags() & EFLAGS_IF)
-		kpanic("cpu_current_or_null(): called with interrupts enabled");
+		return &initial_cpu;
 
 	lapic_id = lapic_get_id();
 
 	for (unsigned int i = 0; i < nof_cpus; i++)
 		if (verify_cpu(&cpus[i]) && cpus[i].lapic_id == lapic_id)
 			return &cpus[i];
-
-	return NULL;
-}
-
-/* Gets the current CPU object. */
-struct x86_cpu *cpu_current(void)
-{
-	struct x86_cpu *cpu;
-
-	if (cpu_get_eflags() & EFLAGS_IF)
-		kpanic("cpu_current(): called with interrupts enabled");
-
-	cpu = cpu_current_or_null();
-
-	if (cpu)
-		return cpu;
 
 	kpanic("cpu_current(): called from an unregistered CPU");
 }
@@ -120,13 +122,12 @@ void cpu_set_active(bool flag)
 {
 	struct x86_cpu *cpu;
 
-	push_no_interrupts();
+	preempt_disable();
 	cpu = cpu_current();
 	if (atomic_load(&(cpu->active)) == false)
 		atomic_fetch_add(&nof_active_cpus, 1);
 	atomic_store(&(cpu->active), flag);
-	pop_no_interrupts();
-
+	preempt_enable();
 }
 
 /* Flush TLB on current CPU. */
@@ -135,13 +136,13 @@ void cpu_flush_tlb(void)
 	paddr_t cr3;
 
 	/* Need to turn off interrupts so that we're not rescheduled during this process. */
-	push_no_interrupts();
+	preempt_disable();
 
 	cr3 = cpu_get_cr3();
 
 	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
 
-	pop_no_interrupts();
+	preempt_enable();
 }
 
 /* Set CR3 on current CPU. */
@@ -150,7 +151,7 @@ paddr_t cpu_set_cr3(paddr_t cr3)
 	paddr_t prev_cr3;
 
 	/* Need to turn off interrupts so that we're not rescheduled during this process. */
-	push_no_interrupts();
+	preempt_disable();
 
 	prev_cr3 = cpu_get_cr3();
 
@@ -161,7 +162,7 @@ paddr_t cpu_set_cr3(paddr_t cr3)
 	asm volatile ("movl %0, %%cr3" : : "r" (cr3) : "memory");
 
 _cpu_set_cr3_redundant:
-	pop_no_interrupts();
+	preempt_enable();
 
 	return prev_cr3;
 }
@@ -183,17 +184,15 @@ unsigned int get_nof_active_cpus(void)
 void push_no_interrupts(void)
 {
 	struct x86_cpu *cpu;
-	uint32_t eflags;
+	uint32_t eflags = cpu_get_eflags();
 
 	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
 	   that case, we assume the interrupts are off. */
 	if (nof_cpus == 0)
 	{
-		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		kassert((eflags & EFLAGS_IF) == 0);
 		return;
 	}
-
-	eflags = cpu_get_eflags();
 
 	cpu_force_cli();
 	cpu = cpu_current();
@@ -207,17 +206,18 @@ void push_no_interrupts(void)
 void pop_no_interrupts(void)
 {
 	struct x86_cpu *cpu;
+	uint32_t eflags = cpu_get_eflags();
 
 	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
 	   that case, we assume the interrupts are off. */
 	if (nof_cpus == 0)
 	{
-		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		kassert((eflags & EFLAGS_IF) == 0);
 		return;
 	}
 
 	/* Calling pop_no_interrupts before push_no_interrupts is an error! */
-	if (cpu_get_eflags() & EFLAGS_IF)
+	if (eflags & EFLAGS_IF)
 		kpanic("pop_no_interrupts(): interrupts enabled");
 
 	cpu = cpu_current();
@@ -228,4 +228,49 @@ void pop_no_interrupts(void)
 
 	if (cpu->cli_stack == 0 && cpu->int_enabled)
 		cpu_force_sti();
+}
+
+/* Disable preemption on the CPU. Can be called multiple times. */
+void preempt_disable(void)
+{
+	struct x86_cpu *cpu;
+
+	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
+	   that case, we assume the interrupts are off. */
+	if (nof_cpus == 0)
+	{
+		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		return;
+	}
+
+	/* Need to turn off interrupts so that we're not rescheduled during this process. */
+	push_no_interrupts();
+	cpu = cpu_current();
+	cpu->preempt_disabled++;
+	pop_no_interrupts();
+}
+
+/* Enable preemption on the CPU. Has to be called as many times as preempt_disable() to actually
+   enable preemption. */
+void preempt_enable(void)
+{
+	struct x86_cpu *cpu;
+
+	/* If we have been called before CPUs have been enumerated, we cannot call cpu_current(). In
+	   that case, we assume the interrupts are off. */
+	if (nof_cpus == 0)
+	{
+		kassert((cpu_get_eflags() & EFLAGS_IF) == 0);
+		return;
+	}
+
+	/* Need to turn off interrupts so that we're not rescheduled during this process. */
+	push_no_interrupts();
+	cpu = cpu_current();
+	cpu->preempt_disabled--;
+
+	if (cpu->preempt_disabled < 0)
+		kpanic("preempt_enable(): underflow");
+
+	pop_no_interrupts();
 }

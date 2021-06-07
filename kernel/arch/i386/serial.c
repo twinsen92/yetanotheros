@@ -178,8 +178,6 @@ static void serial_handler_main(void *cookie)
 	while (1)
 	{
 		thread_mutex_acquire(&(s->mutex));
-		/* TODO: Is disabling interrupts here really necessary? */
-		push_no_interrupts();
 
 		/* Wait until we have data available. */
 		while (!serial_received(s->port) && !is_transmit_empty(s->port))
@@ -191,7 +189,6 @@ static void serial_handler_main(void *cookie)
 		if (is_transmit_empty(s->port))
 			try_serial_write(s);
 
-		pop_no_interrupts();
 		thread_mutex_release(&(s->mutex));
 	}
 }

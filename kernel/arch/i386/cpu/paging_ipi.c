@@ -22,7 +22,7 @@ static void ipi_flush_tlb_handler(__unused struct isr_frame *frame)
 
 	phys_kernel_pd = vm_map_rev_walk(kernel_pd, true);
 
-	push_no_interrupts();
+	preempt_disable();
 
 	cr3 = cpu_get_cr3();
 
@@ -43,7 +43,7 @@ static void ipi_flush_tlb_handler(__unused struct isr_frame *frame)
 			cpu_flush_tlb();
 	}
 
-	pop_no_interrupts();
+	preempt_enable();
 
 	/* Send an EOI and atomically set the received flag. */
 	lapic_eoi();

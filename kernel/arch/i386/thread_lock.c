@@ -7,6 +7,8 @@
 #include <arch/scheduler.h>
 #include <arch/thread.h>
 
+/* TODO: Perhaps use some lighter alternative instead of preempt_disable/push_no_interrupts */
+
 void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned int line)
 {
 	cpu_spinlock_create(&(mutex->spinlock), "thread mutex spinlock");
@@ -59,8 +61,14 @@ static inline void unsafe_mutex_acquire(struct thread_mutex *mutex)
 
 void thread_mutex_acquire(struct thread_mutex *mutex)
 {
+	/* Acquiring a spinlock no longer disables interrupts. To protect from weird behaviour if an
+	   interrupt handler uses the same mutex, temporarily disable interrupts */
 	cpu_spinlock_acquire(&(mutex->spinlock));
+	push_no_interrupts();
+
 	unsafe_mutex_acquire(mutex);
+
+	pop_no_interrupts();
 	cpu_spinlock_release(&(mutex->spinlock));
 }
 
@@ -84,12 +92,17 @@ static inline void unsafe_mutex_release(struct thread_mutex *mutex)
 
 void thread_mutex_release(struct thread_mutex *mutex)
 {
+	/* Acquiring a spinlock no longer disables interrupts. To protect from weird behaviour if an
+	   interrupt handler uses the same mutex, temporarily disable interrupts */
 	cpu_spinlock_acquire(&(mutex->spinlock));
+	push_no_interrupts();
+
 	unsafe_mutex_release(mutex);
 
 	/* Notify a thread waiting on the internal conditon. */
 	sched_thread_notify_one(&(mutex->wait_cond));
 
+	pop_no_interrupts();
 	cpu_spinlock_release(&(mutex->spinlock));
 }
 
@@ -97,8 +110,14 @@ bool thread_mutex_held(struct thread_mutex *mutex)
 {
 	bool ret;
 
+	/* Acquiring a spinlock no longer disables interrupts. To protect from weird behaviour if an
+	   interrupt handler uses the same mutex, temporarily disable interrupts */
 	cpu_spinlock_acquire(&(mutex->spinlock));
+	push_no_interrupts();
+
 	ret = unsafe_mutex_held(mutex);
+
+	pop_no_interrupts();
 	cpu_spinlock_release(&(mutex->spinlock));
 
 	return ret;
@@ -115,7 +134,10 @@ void _thread_cond_create(struct thread_cond *cond, const char *file, unsigned in
 
 void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 {
+	/* Acquiring a spinlock no longer disables interrupts. To protect from weird behaviour if an
+	   interrupt handler uses the same mutex, temporarily disable interrupts */
 	cpu_spinlock_acquire(&(mutex->spinlock));
+	push_no_interrupts();
 
 	if (!unsafe_mutex_held(mutex))
 		kpanic("thread_cond_wait(): on unheld mutex");
@@ -129,6 +151,7 @@ void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex)
 
 	unsafe_mutex_acquire(mutex);
 
+	pop_no_interrupts();
 	cpu_spinlock_release(&(mutex->spinlock));
 }
 

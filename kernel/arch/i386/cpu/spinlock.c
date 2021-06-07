@@ -6,6 +6,8 @@
 #include <arch/cpu.h>
 #include <arch/thread.h>
 
+/* TODO: Perhaps use some lighter alternative instead of preempt_disable/push_no_interrupts */
+
 static inline int asm_xchg(void *ptr, int x)
 {
 	__asm__ __volatile__("xchgl %0,%1"
@@ -18,6 +20,7 @@ static inline int asm_xchg(void *ptr, int x)
 void cpu_spinlock_create(struct cpu_spinlock *spinlock, const char *name)
 {
 	spinlock->locked = 0;
+	spinlock->num = 0;
 	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
 
 #ifdef KERNEL_DEBUG
@@ -51,55 +54,70 @@ static inline void spin_uninterruptible(struct cpu_spinlock *spinlock)
 void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 {
 	struct x86_cpu *cpu;
-	bool had_interrupts_enabled = cpu_get_eflags() & EFLAGS_IF;
+	uint32_t eflags = cpu_get_eflags();
+
+	/* Disable preemption so that the thread we're currently running does not get rescheduled on
+	   a different CPU while holding the spinlock. */
+	preempt_disable();
+
+	/* Disable interrupts. This way we can avoid weird behaviour when an interrupt handler tries to
+	   use the same spinlock. */
+	push_no_interrupts();
 
 	if (cpu_spinlock_held(spinlock))
-		kpanic("cpu_spinlock_acquire(): called on held spinlock");
-
-	push_no_interrupts();
+	{
+		spinlock->num++;
+		goto num_incremented;
+	}
 
 	/* If interrupts were enabled before acquire was called, we want to spin with interrupts
 	   enabled, so that we can get IPIs and be preempted. Interrupts will be disabled when
 	   we acquire the lock. */
-	if (had_interrupts_enabled)
+	if (eflags & EFLAGS_IF)
 		spin_interruptible(spinlock);
 	else
 		spin_uninterruptible(spinlock);
 
 	cpu_memory_barrier();
 
-	spinlock->cpu = CPU_SPINLOCK_UNKNOWN_CPU;
+	spinlock->num = 1;
 
-	cpu = cpu_current_or_null();
+	/* Set fields using the CPU object. */
+	cpu = cpu_current();
 
-	if (cpu)
-	{
-		spinlock->cpu = cpu->num;
-
-		if (cpu->thread)
-			spinlock->tid = cpu->thread->noarch.tid;
-	}
+	spinlock->cpu = cpu->num;
 
 #ifdef KERNEL_DEBUG
+	if (cpu->thread)
+		spinlock->tid = cpu->thread->noarch.tid;
+	/* Copy the current call stack into the spinlock object. */
 	debug_fill_call_stack(&(spinlock->lock_call_stack));
 #endif
+
+num_incremented:
+	pop_no_interrupts();
 }
 
 void cpu_spinlock_release(struct cpu_spinlock *spinlock)
 {
+	/* Disable interrupts. This way we can avoid weird behaviour when an interrupt handler tries to
+	   use the same spinlock. */
+	push_no_interrupts();
+
 	if (spinlock->cpu == CPU_SPINLOCK_INVALID_CPU)
 		kpanic("cpu_spinlock_release(): called on an unheld spinlock");
 
-	/* We only check if we hold the lock if the holding CPU is a known one. This avoids issues in
-	   early kernel, where we might have not enumerated CPUs yet. */
-	if (spinlock->cpu != CPU_SPINLOCK_UNKNOWN_CPU && !cpu_spinlock_held(spinlock))
+	if (!cpu_spinlock_held(spinlock))
 		kpanic("cpu_spinlock_release(): called on an unheld spinlock");
+
+	if (--spinlock->num > 0)
+		goto num_decremented;
 
 	spinlock->cpu = CPU_SPINLOCK_INVALID_CPU;
 
-	spinlock->tid = TID_INVALID;
-
 #ifdef KERNEL_DEBUG
+	/* Clear debug fields. */
+	spinlock->tid = TID_INVALID;
 	debug_clear_call_stack(&(spinlock->lock_call_stack));
 #endif
 
@@ -107,11 +125,17 @@ void cpu_spinlock_release(struct cpu_spinlock *spinlock)
 
 	asm volatile ("movl $0, %0" : "+m" (spinlock->locked));
 
+num_decremented:
 	pop_no_interrupts();
+
+	/* Since we're no longer holding the lock, enable preemption. */
+	preempt_enable();
 }
 
 bool cpu_spinlock_held(struct cpu_spinlock *spinlock)
 {
+	/* Disable interrupts. This way we can avoid weird behaviour when an interrupt handler tries to
+	   use the same spinlock. */
 	push_no_interrupts();
 	bool ret = spinlock->locked && spinlock->cpu == cpu_current()->num;
 	pop_no_interrupts();

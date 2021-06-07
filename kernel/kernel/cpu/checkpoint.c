@@ -9,12 +9,12 @@ void cpu_checkpoint_create(struct cpu_checkpoint *cp)
 
 void cpu_checkpoint_enter(struct cpu_checkpoint *cp)
 {
-	push_no_interrupts();
+	preempt_disable();
 
 	atomic_fetch_add(&(cp->num), 1);
 
 	while(atomic_load(&(cp->num)) != get_nof_active_cpus())
 		cpu_relax();
 
-	pop_no_interrupts();
+	preempt_enable();
 }

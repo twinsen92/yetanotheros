@@ -20,4 +20,11 @@ void push_no_interrupts(void);
 /* Pops a "cli" from the CPU's interrupt flag stack. */
 void pop_no_interrupts(void);
 
+/* Disable preemption on the CPU. Can be called multiple times. */
+void preempt_disable(void);
+
+/* Enable preemption on the CPU. Has to be called as many times as preempt_disable() to actually
+   enable preemption. */
+void preempt_enable(void);
+
 #endif

@@ -18,6 +18,7 @@
 struct cpu_spinlock
 {
 	int locked; /* Is the lock acquired? */
+	int num;
 	int cpu; /* The number of the holding CPU. */
 
 #ifdef KERNEL_DEBUG

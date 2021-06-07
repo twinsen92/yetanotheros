@@ -61,7 +61,7 @@ void x86_thread_construct_empty(struct x86_thread *thread, struct x86_proc *proc
 /* Builds a kernel x86_thread object. */
 void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *proc,
 	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
-	void *cookie)
+	void *cookie, bool int_enabled)
 {
 	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
@@ -85,6 +85,9 @@ void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *pr
 	thread->stack0_size = 0;
 	thread->ebp0 = 0;
 
+	thread->int_enabled = int_enabled;
+	thread->cli_stack = 0;
+
 	/* 2. We'll be switching in an interrupt handler. We need to imitate the stack during
 	   an interrupt, so that iret works. */
 	thread->esp = thread->esp - sizeof(struct isr_frame);
@@ -100,7 +103,7 @@ void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *pr
 	/* IRET stack. Since we're IRETing to the same ring, no need to provide SS:ESP */
 	isr_frame->ss = 0;
 	isr_frame->esp = 0;
-	isr_frame->eflags = 0;
+	isr_frame->eflags = int_enabled ? EFLAGS_IF : 0;
 	isr_frame->cs = KERNEL_CODE_SELECTOR;
 	isr_frame->eip = (uint32_t)tentry;
 

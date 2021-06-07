@@ -105,20 +105,19 @@ void sched_global_release(void)
 
 static inline void store_interrupts(struct x86_thread *thread, struct x86_cpu *cpu)
 {
-	/* Thread switches should not happen with interrupts enabled. */
-	kassert(cpu->cli_stack > 0);
-
 	thread->int_enabled = cpu->int_enabled;
 	thread->cli_stack = cpu->cli_stack;
 }
 
 static inline void restore_interrupts(struct x86_thread *thread, struct x86_cpu *cpu)
 {
-	/* Thread switches should not happen with interrupts enabled. */
-	kassert(thread->cli_stack > 0);
-
 	cpu->int_enabled = thread->int_enabled;
 	cpu->cli_stack = thread->cli_stack;
+
+	if (cpu->int_enabled && cpu->cli_stack == 0)
+		cpu_force_sti();
+	else
+		cpu_force_cli();
 }
 
 /* Enters the scheduler. This creates a scheduler thread in the kernel process for the current
@@ -237,31 +236,37 @@ struct x86_thread *get_current_thread(void)
 	struct x86_thread *thread;
 
 	/* Don't want to get rescheduled between cpu_current and cpu->thread access. */
-	push_no_interrupts();
+	preempt_disable();
 	cpu = cpu_current();
 	thread = cpu->thread;
-	pop_no_interrupts();
+	preempt_enable();
 
 	return thread;
 }
 
 static void reschedule(void)
 {
-	struct x86_thread *thread = get_current_thread();
+	struct x86_cpu *cpu = cpu_current();
+	struct x86_thread *thread = cpu->thread;
 
-	if(!cpu_spinlock_held(&global_scheduler_lock))
+	/* We should not hold more than the global scheduler lock. Otherwise we can run into issues
+	   if the thread ends up on a different CPU. */
+	if (cpu->preempt_disabled > 1)
+		kpanic("reschedule(): preemption was disabled");
+
+	if (thread == NULL)
+		kpanic("reschedule(): no thread is running");
+	if (!cpu_spinlock_held(&global_scheduler_lock))
 		kpanic("reschedule(): process list lock not held");
-	if(thread->noarch.state == THREAD_RUNNING)
+	if (thread->noarch.state == THREAD_RUNNING)
 		kpanic("reschedule(): bad thread state");
-	if(cpu_get_eflags() & EFLAGS_IF)
-		kpanic("reschedule(): interrupts enabled");
 
 	/* Put the thread back on the scheduler's queue. */
 	if (thread->noarch.state != THREAD_BLOCKED)
 		STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
 
 	/* Do the switch. The scheduler loop takes care of interrupts stack. */
-	x86_thread_switch(thread, cpu_current()->scheduler);
+	x86_thread_switch(thread, cpu->scheduler);
 }
 
 /* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
@@ -352,11 +357,7 @@ tid_t thread_create(pid_t pid, void (*entry)(void *), void *cookie, const char *
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct x86_thread));
 	x86_thread_construct_kthread(thread, proc, name, stack, 4096, &thread_entry, entry,
-		cookie);
-
-	/* New threads start holding the global scheduler lock. */
-	thread->int_enabled = true; /* The thread, by default, has interrupts enabled. */
-	thread->cli_stack = 1;
+		cookie, true);
 
 	/* We get the ID before putting the thread into the scheduler structures. The thread might exit
 	   and be destroyed before we even return from this function. */
@@ -394,7 +395,6 @@ void thread_sleep(unsigned int milliseconds)
 	ticks_t cur;
 
 	cpu_spinlock_acquire(&global_scheduler_lock);
-
 	thread = get_current_thread();
 	thread->noarch.state = THREAD_SLEEPING;
 	cur = ticks_get();

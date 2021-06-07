@@ -119,9 +119,9 @@ static void get_stack_info(void **top, void **bottom)
 {
 	struct x86_cpu *cpu;
 
-	cpu = cpu_current_or_null();
+	cpu = cpu_current();
 
-	if (cpu == NULL)
+	if (cpu->stack_top == NULL)
 	{
 		/* We're in early initialization stages. Return the boot stack shape. */
 		*top = get_symbol_vaddr(__boot_stack_top);
@@ -163,7 +163,7 @@ void debug_fill_call_stack(struct debug_call_stack *cs)
 
 	/* Need to turn off interrupts so that we're not rescheduled during this process. Stack pointers
 	   might change if we're called outside of thread context. */
-	push_no_interrupts();
+	preempt_disable();
 
 	/* Try to get the current stack shape. This might get called outside of thread context so we
 	   also look at the current CPU for clues. The stack shape will help us detect when we've
@@ -186,5 +186,5 @@ void debug_fill_call_stack(struct debug_call_stack *cs)
 
 	cs->depth = i;
 
-	pop_no_interrupts();
+	preempt_enable();
 }
