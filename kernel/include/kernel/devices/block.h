@@ -18,17 +18,17 @@ struct block_dev
 
 	void *opaque;
 
-	/* Lock the block with number num. */
-	void (*lock)(struct block_dev *dev, uint num);
+	/* Lock the block with number num. Returns an index valid until unlock. */
+	uint (*lock)(struct block_dev *dev, uint num);
 
-	/* Unlock the block with number num. */
-	void (*unlock)(struct block_dev *dev, uint num);
+	/* Unlock the index block. */
+	void (*unlock)(struct block_dev *dev, uint index);
 
-	/* Write len bytes to the block with number num, starting at offset off, from src. */
-	void (*write)(struct block_dev *dev, uint num, uint off, const byte *src, uint len);
+	/* Write len bytes to the index block, starting at offset off, from src. */
+	void (*write)(struct block_dev *dev, uint index, uint off, const byte *src, uint len);
 
-	/* Read len bytes from the block with number num, starting at offset off, into dest. */
-	void (*read)(struct block_dev *dev, uint num, uint off, byte *dest, uint len);
+	/* Read len bytes from the index block, starting at offset off, into dest. */
+	void (*read)(struct block_dev *dev, uint index, uint off, byte *dest, uint len);
 };
 
 /* Init the registry of block devices. */

@@ -82,8 +82,6 @@ void cpu_set_boot_cpu(void)
 /* Enumerates other CPUs. Call with interrupts disabled. */
 void cpu_enumerate_other_cpus(void (*receiver)(struct x86_cpu *))
 {
-	struct x86_cpu *cpu;
-
 	lapic_id_t cur_lapic_id;
 
 	/* Check for calls with preemption enabled. */

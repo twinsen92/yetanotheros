@@ -399,7 +399,7 @@ void thread_sleep(unsigned int milliseconds)
 	thread->noarch.state = THREAD_SLEEPING;
 	cur = ticks_get();
 	thread->noarch.sleep_since = cur;
-	thread->noarch.sleep_until = cur + (milliseconds * (TICKS_PER_SECOND / 1000));
+	thread->noarch.sleep_until = cur + (milliseconds * TICKS_PER_MILLISECOND);
 	reschedule();
 	cpu_spinlock_release(&global_scheduler_lock);
 }
