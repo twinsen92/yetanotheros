@@ -1,4 +1,5 @@
 /* kernel/drivers/ata/generic.c - generic PCI ATA driver */
+#include <kernel/block.h>
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
@@ -8,7 +9,6 @@
 #include <kernel/ticks.h>
 #include <kernel/utils.h>
 #include <kernel/devices/ata.h>
-#include <kernel/devices/block.h>
 #include <kernel/devices/pci.h>
 
 #define GEN_ATA_CACHE_SIZE 20
@@ -50,14 +50,15 @@ static void gen_ata_bd_read(struct block_dev *dev, uint index, uint off, byte *d
 #define GEN_ATA_BLOCK_DEV_CTOR(n)	\
 {									\
 	.name = "ata"#n,				\
+	.valid = false,					\
 	.block_size = IDE_SECTOR_SIZE,	\
 	.num_blocks = 0,				\
 	.opaque = NULL,					\
 									\
-	.lock = gen_ata_bd_lock,			\
-	.unlock = gen_ata_bd_unlock,		\
-	.write = gen_ata_bd_write,			\
-	.read = gen_ata_bd_read,			\
+	.lock = gen_ata_bd_lock,		\
+	.unlock = gen_ata_bd_unlock,	\
+	.write = gen_ata_bd_write,		\
+	.read = gen_ata_bd_read,		\
 }
 
 static struct block_dev gen_ata_block_devices[GEN_ATA_DRIVES_NUM] = {
@@ -154,6 +155,13 @@ static void gen_ata_init_drive(uint drive_index, byte channel, byte drive)
 		else
 			goto failed;
 
+		/* We don't support ATAPI devices yet. */
+		if (type == IDE_ATAPI)
+		{
+			kdprintf("Generic ATA driver: drive %d:%d is an ATAPI drive\n", channel, drive);
+			goto failed;
+		}
+
 		/* Try to send an ATAPI IDENITFY command. */
 		ata_pio_wait_for_status(cp, ATA_SR_BSY, 0);
 		ata_pio_register_write(cp, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
@@ -183,10 +191,10 @@ static void gen_ata_init_drive(uint drive_index, byte channel, byte drive)
 	/* Get the size of the drive in sectors. */
 	if (dp->fcs5 & ATA_FCS5_BIT_LBA48)
 		// Device uses 48-Bit Addressing:
-		dp->sectors = idbuf[ATA_IDENT_MAX_LBA_EXT];
+		dp->sectors = *((uint64_t *)(idbuf + ATA_IDENT_MAX_LBA_EXT));
 	else
 		// Device uses CHS or 28-bit Addressing:
-		dp->sectors = idbuf[ATA_IDENT_MAX_LBA];
+		dp->sectors = *((uint32_t *)(idbuf + ATA_IDENT_MAX_LBA));
 
 	/* Read the serial number, terminate it and rotate words (ATA string). */
 	kmemcpy(dp->serial, idbuf + ATA_IDENT_SERIAL, 20);
@@ -205,14 +213,14 @@ static void gen_ata_init_drive(uint drive_index, byte channel, byte drive)
 
 	gen_ata_block_devices[drive_index].num_blocks = dp->sectors;
 	gen_ata_block_devices[drive_index].opaque = dp;
+	gen_ata_block_devices[drive_index].valid = true;
 
-	bdev_add(&(gen_ata_block_devices[drive_index]));
-
-	goto unlock_and_exit;
+	goto unlock_and_return;
 
 failed:
 	kdprintf("Generic ATA driver: failed to initialize drive %d:%d\n", channel, drive);
-unlock_and_exit:
+
+unlock_and_return:
 	ata_pio_unlock(cp);
 }
 
@@ -285,6 +293,10 @@ static uint gen_ata_bd_lock(struct block_dev *dev, uint num)
 	uint i;
 	struct block *b;
 	struct ide_drive *dp = (struct ide_drive*)dev->opaque;
+	uint min_hits, min_hits_index;
+
+	if (dev->valid == false)
+		kpanic("gen_ata_bd_lock(): invalid block device");
 
 	if (dp->present == false)
 		kpanic("gen_ata_bd_lock(): drive not present");
@@ -307,14 +319,32 @@ static uint gen_ata_bd_lock(struct block_dev *dev, uint num)
 		}
 	}
 
-	/* We did not find the block we were looking for. Need to read it out of the disk. Look for an
-	   empty entry in the cache. */
+	/* We did not find the block we were looking for. Look for an unreferenced empty block in cache
+	   that has the lowest hit rate. */
+
+	min_hits = UINT_MAX;
+	min_hits_index = cache.num_blocks;
+
 	for (i = 0; i < cache.num_blocks; i++)
 	{
+		b = cache.blocks + i;
+
+		if (b->ref == 0 && b->hit < min_hits)
+		{
+			min_hits = b->hit;
+			min_hits_index = i;
+		}
+	}
+
+	/* The index will be valid if we found a block. */
+	if (min_hits_index < cache.num_blocks)
+	{
+		b = cache.blocks + min_hits_index;
+
 		if (b->ref == 0)
 		{
 			thread_mutex_create(&(b->mutex));
-			gen_ata_read_block(dp, num, b->data);
+			kmemset(b->data, 0, IDE_SECTOR_SIZE);
 			b->drive = dp->num;
 			b->num = num;
 			b->ref = 1;
@@ -323,7 +353,7 @@ static uint gen_ata_bd_lock(struct block_dev *dev, uint num)
 			cpu_spinlock_release(&(cache.lock));
 			/* Wait for block to become available. */
 			thread_mutex_acquire(&(b->mutex));
-			return i;
+			return min_hits_index;
 		}
 	}
 
@@ -334,6 +364,9 @@ static void gen_ata_bd_unlock(struct block_dev *dev, uint index)
 {
 	struct block *b = cache.blocks + index;
 	struct ide_drive *dp = (struct ide_drive*)dev->opaque;
+
+	if (dev->valid == false)
+		kpanic("gen_ata_bd_unlock(): invalid block device");
 
 	if (!thread_mutex_held(&(b->mutex)))
 		kpanic("gen_ata_bd_unlock(): block mutex not held");
@@ -352,6 +385,9 @@ static void gen_ata_bd_write(struct block_dev *dev, uint index, uint off, const 
 {
 	struct block *b = cache.blocks + index;
 	struct ide_drive *dp = (struct ide_drive*)dev->opaque;
+
+	if (dev->valid == false)
+		kpanic("gen_ata_bd_write(): invalid block device");
 
 	if (!thread_mutex_held(&(b->mutex)))
 		kpanic("gen_ata_bd_write(): block mutex not held");
@@ -381,6 +417,9 @@ static void gen_ata_bd_read(struct block_dev *dev, uint index, uint off, byte *d
 	struct block *b = cache.blocks + index;
 	struct ide_drive *dp = (struct ide_drive*)dev->opaque;
 
+	if (dev->valid == false)
+		kpanic("gen_ata_bd_read(): invalid block device");
+
 	if (!thread_mutex_held(&(b->mutex)))
 		kpanic("gen_ata_bd_read(): block mutex not held");
 
@@ -404,6 +443,9 @@ static void gen_ata_bd_read(struct block_dev *dev, uint index, uint off, byte *d
 
 void ata_gen_install(void)
 {
+	uint i;
+	struct block_dev *bdev;
+
 	if (atomic_exchange(&gen_ata_inserted, true))
 		kpanic("ata_gen_install(): called twice");
 
@@ -416,4 +458,13 @@ void ata_gen_install(void)
 	kmemset(cache.blocks, 0, sizeof(struct block) * GEN_ATA_CACHE_SIZE);
 
 	pci_register_driver(&gen_ata_pci_driver);
+
+	/* Register block devices created for found drives. */
+	for (i = 0; i < GEN_ATA_DRIVES_NUM; i++)
+	{
+		bdev = &(gen_ata_block_devices[i]);
+
+		if (bdev->valid)
+			bdev_add(bdev);
+	}
 }

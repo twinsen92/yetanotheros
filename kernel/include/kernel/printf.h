@@ -6,4 +6,6 @@
 
 int generic_printf(void (*putchar)(char c), const char* restrict format, va_list parameters);
 
+int ksnprintf(char *dest, int len, const char* restrict format, ...);
+
 #endif

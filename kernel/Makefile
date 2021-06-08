@@ -29,9 +29,10 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
+kernel/block/mbr.o \
+kernel/block/registry.o \
 kernel/cpu/checkpoint.o \
 kernel/devices/ata_pio.o \
-kernel/devices/block.o \
 kernel/devices/pci.o \
 kernel/drivers/ata/generic.o \
 kernel/test/kalloc_test.o \

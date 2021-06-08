@@ -2,6 +2,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
+#include <kernel/thread.h>
 #include <kernel/utils.h>
 #include <kernel/devices/pci.h>
 #include <kernel/devices/pci/config.h>
@@ -10,7 +11,7 @@
 /* PCI registry */
 /* TODO: Use linked lists. */
 #define MAX_PCI_FUNCTIONS 32
-static struct cpu_spinlock pci_config_spinlock;
+static struct thread_mutex pci_config_mutex;
 static int next_pci_function = 0;
 static struct pci_function pci_functions[MAX_PCI_FUNCTIONS];
 
@@ -126,7 +127,7 @@ void init_pci(void)
 {
 	uint8_t func, header_type;
 
-	cpu_spinlock_create(&pci_config_spinlock, "PCI config spinlock");
+	thread_mutex_create(&pci_config_mutex);
 	next_pci_function = 0;
 	kmemset(pci_functions, 0, sizeof(pci_functions));
 
@@ -161,7 +162,7 @@ void pci_register_driver(struct pci_driver *driver)
 	struct pci_function *fun;
 	struct pci_device_id *id, *sup;
 
-	cpu_spinlock_acquire(&pci_config_spinlock);
+	thread_mutex_acquire(&pci_config_mutex);
 
 	/* Loop through functions without a driver. */
 	for (uint i = 0; i < MAX_PCI_FUNCTIONS; i++)
@@ -189,12 +190,12 @@ void pci_register_driver(struct pci_driver *driver)
 		}
 	}
 
-	cpu_spinlock_release(&pci_config_spinlock);
+	thread_mutex_release(&pci_config_mutex);
 }
 
 uint32_t pci_get_bar(struct pci_function *function, uint8_t index)
 {
-	if (!cpu_spinlock_held(&pci_config_spinlock))
+	if (!thread_mutex_held(&pci_config_mutex))
 		kpanic("pci_get_bar(): config spinlock not held");
 
 	/* Make sure there are BAR's */
@@ -207,7 +208,7 @@ uint32_t pci_get_bar(struct pci_function *function, uint8_t index)
 
 uint8_t pci_get_int_line(struct pci_function *function)
 {
-	if (!cpu_spinlock_held(&pci_config_spinlock))
+	if (!thread_mutex_held(&pci_config_mutex))
 		kpanic("pci_get_int_line(): config spinlock not held");
 
 	return config_read_byte(function->bus, function->device, function->function,
@@ -216,7 +217,7 @@ uint8_t pci_get_int_line(struct pci_function *function)
 
 void pci_set_int_line(struct pci_function *function, uint8_t irq_line)
 {
-	if (!cpu_spinlock_held(&pci_config_spinlock))
+	if (!thread_mutex_held(&pci_config_mutex))
 		kpanic("pci_set_int_line(): config spinlock not held");
 
 	config_write_byte(function->bus, function->device, function->function,
@@ -225,7 +226,7 @@ void pci_set_int_line(struct pci_function *function, uint8_t irq_line)
 
 uint8_t pci_get_status(struct pci_function *function)
 {
-	if (!cpu_spinlock_held(&pci_config_spinlock))
+	if (!thread_mutex_held(&pci_config_mutex))
 		kpanic("pci_get_status(): config spinlock not held");
 
 	return config_read_byte(function->bus, function->device, function->function,
@@ -234,7 +235,7 @@ uint8_t pci_get_status(struct pci_function *function)
 
 void pci_command(struct pci_function *function, uint8_t command)
 {
-	if (!cpu_spinlock_held(&pci_config_spinlock))
+	if (!thread_mutex_held(&pci_config_mutex))
 		kpanic("pci_command(): config spinlock not held");
 
 	config_write_byte(function->bus, function->device, function->function,

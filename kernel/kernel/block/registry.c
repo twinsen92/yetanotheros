@@ -1,9 +1,10 @@
-/* kernel/devices/block.c - definitons for block devices */
+/* kernel/block/registry.c - block device registry */
+#include <kernel/block.h>
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/utils.h>
-#include <kernel/devices/block.h>
+#include <kernel/block/partitions.h>
 
 /* TODO: Use a linked list. */
 
@@ -21,6 +22,12 @@ void init_bdev(void)
 		block_devices[i] = NULL;
 
 	atomic_store(&bdev_initialized, true);
+}
+
+static void scan_for_partitions(struct block_dev *dev)
+{
+	if (mbr_table_scan(dev))
+		return;
 }
 
 /* Add a block device. */
@@ -44,6 +51,8 @@ void bdev_add(struct block_dev *dev)
 
 	if (i == MAX_BLOCK_DEVICES)
 		kpanic("bdev_add(): max devices exceeded");
+
+	scan_for_partitions(dev);
 
 	cpu_spinlock_release(&bdev_spinlock);
 }

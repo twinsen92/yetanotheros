@@ -66,14 +66,27 @@ static char *itoa(int value, char *str, int base)
 	return str;
 }
 
-static bool print(void (*putchar)(char c), const char* data, size_t length)
+static bool print(void (*putchar)(char c), char *dest, int off, int *remaining, const char* data,
+	size_t length)
 {
 	for (size_t i = 0; i < length; i++)
-		putchar(data[i]);
+	{
+		if (*remaining == 0)
+			return false;
+
+		if (dest)
+			dest[off + i] = data[i];
+		else
+			putchar(data[i]);
+
+		(*remaining)--;
+	}
+
 	return true;
 }
 
-int generic_printf(void (*putchar)(char c), const char* restrict format, va_list parameters)
+static int generic_nprintf(void (*putchar)(char c), char *dest, int remaining,
+	const char* restrict format, va_list parameters)
 {
 	char buf[32];
 	int written = 0;
@@ -94,7 +107,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, format, amount))
+			if (!print(putchar, dest, written, &remaining, format, amount))
 				return -1;
 			format += amount;
 			written += amount;
@@ -112,7 +125,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, &c, sizeof(c)))
+			if (!print(putchar, dest, written, &remaining, &c, sizeof(c)))
 				return -1;
 			written++;
 		}
@@ -126,7 +139,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, str, len))
+			if (!print(putchar, dest, written, &remaining, str, len))
 				return -1;
 			written += len;
 		}
@@ -141,7 +154,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, str, len))
+			if (!print(putchar, dest, written, &remaining, str, len))
 				return -1;
 			written += len;
 		}
@@ -156,7 +169,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, str, len))
+			if (!print(putchar, dest, written, &remaining, str, len))
 				return -1;
 			written += len;
 		}
@@ -172,7 +185,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, str, len))
+			if (!print(putchar, dest, written, &remaining, str, len))
 				return -1;
 			written += len;
 		}
@@ -190,9 +203,9 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				return -1;
 			}
 			for (int i = 0; i < zeroes; i++)
-				if (!print(putchar, "0", 1))
+				if (!print(putchar, dest, written, &remaining, "0", 1))
 					return -1;
-			if (!print(putchar, str, len))
+			if (!print(putchar, dest, written, &remaining, str, len))
 				return -1;
 			written += len;
 		}
@@ -205,7 +218,7 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(putchar, format, len))
+			if (!print(putchar, dest, written, &remaining, format, len))
 				return -1;
 			written += len;
 			format += len;
@@ -213,4 +226,21 @@ int generic_printf(void (*putchar)(char c), const char* restrict format, va_list
 	}
 
 	return written;
+}
+
+int generic_printf(void (*putchar)(char c), const char* restrict format, va_list parameters)
+{
+	return generic_nprintf(putchar, NULL, -1, format, parameters);
+}
+
+int ksnprintf(char *dest, int len, const char* restrict format, ...)
+{
+	int ret;
+	va_list parameters;
+
+	va_start(parameters, format);
+	ret = generic_nprintf(NULL, dest, len, format, parameters);
+	va_end(parameters);
+
+	return ret;
 }

@@ -1,6 +1,6 @@
-/* kernel/devices/block.h - base definitons for block devices */
-#ifndef _KERNEL_DEVICES_BLOCK_H
-#define _KERNEL_DEVICES_BLOCK_H
+/* kernel/block.h - base definitons for block devices */
+#ifndef _KERNEL_BLOCK_H
+#define _KERNEL_BLOCK_H
 
 #include <kernel/cdefs.h>
 
@@ -11,6 +11,7 @@ struct block_dev
 	/* Constant part. */
 
 	char name[BDEV_MAX_NAME_LENGTH]; /* Block device name. */
+	bool valid;
 	size_t block_size; /* Size of a single block, in bytes. */
 	uint num_blocks; /* Number of blocks in the device. */
 

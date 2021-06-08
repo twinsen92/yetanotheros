@@ -1,8 +1,8 @@
 /* kernel.c - main kernel compilation unit */
+#include <kernel/block.h>
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/test.h>
-#include <kernel/devices/block.h>
 #include <kernel/devices/pci.h>
 
 /* TODO: Make driver installation more automatic. */
