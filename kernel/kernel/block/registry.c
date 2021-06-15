@@ -52,9 +52,9 @@ void bdev_add(struct block_dev *dev)
 	if (i == MAX_BLOCK_DEVICES)
 		kpanic("bdev_add(): max devices exceeded");
 
-	scan_for_partitions(dev);
-
 	cpu_spinlock_release(&bdev_spinlock);
+
+	scan_for_partitions(dev);
 }
 
 /* Get a block device by name. */
