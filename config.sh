@@ -27,4 +27,9 @@ if echo "$HOST" | grep -Eq -- '-elf($|-)'; then
   export CC="$CC -isystem=$INCLUDEDIR"
 fi
 
+# Disable -Waddress-of-packed-member on x86 because it is of no concern there.
+if echo "$HOST" | grep -Eq -- 'i686'; then
+  export CFLAGS="$CFLAGS -Wno-address-of-packed-member"
+fi
+
 . ./env.sh

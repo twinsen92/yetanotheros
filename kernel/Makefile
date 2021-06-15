@@ -35,7 +35,12 @@ kernel/cpu/checkpoint.o \
 kernel/devices/ata_pio.o \
 kernel/devices/pci.o \
 kernel/drivers/ata/generic.o \
+kernel/fs/fat_core.o \
+kernel/fs/fat_vfs.o \
+kernel/fs/fat.o \
 kernel/test/kalloc_test.o \
+kernel/vfs/core.o \
+kernel/vfs/file.o \
 kernel/exclusive_buffer.o \
 kernel/kernel.o \
 kernel/printf.o \

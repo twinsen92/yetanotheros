@@ -261,6 +261,8 @@ static void gen_ata_write_block(struct ide_drive *dp, uint lba, const byte *src)
 
 /* block_dev */
 
+/* TODO: Would be nice to have an RW lock. That would make reads much quicker. */
+
 #define B_VALID 0x01
 #define B_DIRTY 0x02
 

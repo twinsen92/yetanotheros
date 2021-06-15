@@ -65,6 +65,44 @@ static inline size_t kstrlen(const char *p)
 	return result;
 }
 
+static inline char *kstrcpy(char *to, const char *from)
+{
+	kstrncpy(to, from, kstrlen(from));
+	return to;
+}
+
+static inline const char *kstrchr(const char *str, int chr)
+{
+	while(*str != '\0')
+	{
+		if (*str == chr)
+			return str;
+		str++;
+	}
+
+	return NULL;
+}
+
+static inline char *kstrcat(char *to, const char *from)
+{
+	kstrcpy(to + kstrlen(to), from);
+	return to;
+}
+
+static inline const void *kmemchr(const void *v, int val, size_t num)
+{
+	const byte *p = v;
+
+	while(num-- > 0)
+	{
+		if (*p == val)
+			return p;
+		p++;
+	}
+
+	return NULL;
+}
+
 #define kmin(x, y) ((x) > (y) ? (y) : (x))
 #define kmax(x, y) ((x) > (y) ? (x) : (y))
 

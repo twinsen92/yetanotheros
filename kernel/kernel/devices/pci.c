@@ -8,6 +8,8 @@
 #include <kernel/devices/pci/config.h>
 #include <arch/kernel/portio.h>
 
+/* TODO: Replace ticks_mwait with thread_sleep (now that we use thread_mutex) */
+
 /* PCI registry */
 /* TODO: Use linked lists. */
 #define MAX_PCI_FUNCTIONS 32
