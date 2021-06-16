@@ -180,15 +180,27 @@ static inline void fat_copy_all_ascii_chars(char *to, const struct fat_lfn *lfn)
 #define FAT_BAD_CLUSTER 2
 #define FAT_ERROR 3
 
+/* Read the next cluster out of FAT, using a cluster number. Returns FAT_OK, FAT_LAST_CLUSTER,
+   FAT_BAD_CLUSTER or FAT_ERROR. */
 uint fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t cluster);
 
+/* Walks the path and returns the first cluster of the file pointed at by the path. Returns 0 on
+   fault or if the file could not be found. Also writes the FAT entry into result and the long file
+   name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
 uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const char *path,
 	uint32_t root_cluster, char *name_buffer);
 
+/* Reads bytes from the disk. Returns the number of read bytes. */
 int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint off,
 	int num);
 
-uint32_t fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t first_cluster,
-	uint32_t idx, char *name_buffer);
+#define FAT_ENTRY_LAST -1
+#define FAT_ENTRY_ERROR -2
+
+/* Reads an entry from a directory, starting from entry idx. Returns the next entry that can be read
+   from the directory, FAT_ENTRY_LAST or FAT_ENTRY_ERROR. Also writes the FAT entry into result and
+   the long file name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
+int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t first_cluster,
+	int idx, char *name_buffer);
 
 #endif

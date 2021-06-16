@@ -52,6 +52,9 @@ noreturn kernel_main(void)
 		kdprintf("%s", buf);
 	}
 
+	struct file *f2 = vfs_open("/soemthing/ffffff/test.txt");
+
 	//kalloc_test_main();
+	asm volatile ("cli");
 	while(1);
 }

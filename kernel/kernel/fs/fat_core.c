@@ -10,6 +10,8 @@
 #include <kernel/fs/fat_types.h>
 #include <kernel/fs/fat_vfs.h>
 
+/* Read the next cluster out of FAT, using a cluster number. Returns FAT_OK, FAT_LAST_CLUSTER,
+   FAT_BAD_CLUSTER or FAT_ERROR. */
 uint fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t cluster)
 {
 	struct fat_vfs_super_data *fat_data;
@@ -90,6 +92,9 @@ uint fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t clus
 
 /* TODO: Implement some sort of caching mechanism. */
 
+/* Walks the path and returns the first cluster of the file or directory pointed at by the path.
+   Returns 0 on fault or if the node could not be found. Also writes the FAT entry into result and
+   the long file name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
 uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const char *path,
 	uint32_t root_cluster, char *name_buffer)
 {
@@ -98,7 +103,7 @@ uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const 
 	bool is_leaf = false;
 	uint node_name_length;
 	uint32_t leaf_cluster = 0;
-	uint32_t en_i = 0;
+	int en_i = 0;
 
 	/* Get the super node data. */
 	kassert(super);
@@ -130,6 +135,10 @@ uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const 
 		/* Read a FAT entry including LFN entries. */
 		en_i = fat_read_entry(result, super, root_cluster, en_i, name_buffer);
 
+		/* We got an error */
+		if (en_i == FAT_ENTRY_ERROR)
+			kpanic("fat_walk_path(): error reading entry");
+
 		/* Check if this is the node we're looking for. */
 		if (kstrncmp(name_buffer, node, node_name_length))
 		{
@@ -145,11 +154,16 @@ uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const 
 					name_buffer);
 			}
 		}
+
+		/* That was the last entry. */
+		if (en_i == FAT_ENTRY_LAST)
+			break;
 	}
 
 	return leaf_cluster;
 }
 
+/* Reads bytes from the disk. Returns the number of read bytes. */
 int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint off,
 	int num)
 {
@@ -234,15 +248,20 @@ int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint of
 	return num_read;
 }
 
-
-uint32_t fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t first_cluster,
-	uint32_t idx, char *name_buffer)
+/* Reads an entry from a directory, starting from entry idx. Returns the next entry that can be read
+   from the directory, FAT_ENTRY_LAST or FAT_ENTRY_ERROR. Also writes the FAT entry into result and
+   the long file name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
+int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t first_cluster,
+	int idx, char *name_buffer)
 {
 	byte entry_buffer[FAT_ENTRY_SIZE];
 	struct fat_entry *entry;
 	struct fat_lfn *lfn;
 	int iseq = 0;
 	bool in_lfn_sequence = false;
+
+	if (idx < 0)
+		return FAT_ENTRY_ERROR;
 
 	/* entry and lfn pointers won't change */
 	entry = (struct fat_entry *)entry_buffer;
@@ -252,13 +271,13 @@ uint32_t fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint3
 	{
 		/* Read the next entry from disk. */
 		if (!fat_read(super, first_cluster, entry_buffer, idx * FAT_ENTRY_SIZE, FAT_ENTRY_SIZE))
-			return 0;
+			return FAT_ENTRY_ERROR;
 
 		idx++;
 
 		/* Check the first byte of the entry. */
 		if (*(entry_buffer) == FAT_LAST_ENTRY)
-			return 0;
+			return FAT_ENTRY_LAST;
 		else if (*(entry_buffer) == FAT_UNUSED_ENTRY)
 			continue;
 
