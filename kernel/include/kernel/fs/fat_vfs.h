@@ -48,14 +48,15 @@ struct fat_vfs_node_data
 {
 	/* Super part. To modify, super lock has to be held.*/
 
-	uint32_t first_cluster;
-	uint ref;
-	uint hit;
+	uint32_t dir_cluster; /* Directory cluster where the node entry is located. */
+	uint32_t first_cluster; /* First cluster on disk that contains the data of the node. */
+	uint ref; /* Current number of references to this node. */
+	uint hit; /* Number of times this node has been found. */
 
 	/* Dynamic part. */
 
 	struct thread_mutex mutex;
-	uint32_t num_bytes;
+	uint32_t num_bytes; /* Number of bytes the node occupies. */
 };
 
 #define fat_get_super_data(super) ((struct fat_vfs_super_data *)(super)->opaque)
@@ -99,5 +100,8 @@ uint fat_vfs_node_get_num_leaves(struct vfs_node *node);
 
 /* Get leaf number n. First "0" leaf always points at itself. */
 inode_t fat_vfs_node_get_leaf(struct vfs_node *node, uint n);
+
+/* Get leaf number n. First "0" leaf always points at itself. */
+struct vfs_node *fat_vfs_node_get_leaf_node(struct vfs_node *node, uint n);
 
 #endif

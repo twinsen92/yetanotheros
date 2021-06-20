@@ -70,7 +70,7 @@ static struct vfs_node *unsafe_fat_get(struct vfs_super *super, uint32_t first_c
 	return NULL;
 }
 
-static struct vfs_node *unsafe_create(struct vfs_super *super, struct fat_entry *entry)
+static struct vfs_node *unsafe_create(struct vfs_super *super, struct fat_result *result)
 {
 	struct vfs_node *node;
 	struct fat_vfs_node_data *node_data;
@@ -85,18 +85,19 @@ static struct vfs_node *unsafe_create(struct vfs_super *super, struct fat_entry 
 	node->type = VFS_NODE_FILE;
 	node->flags = VFS_NODE_BIT_READABLE;
 
-	if (entry->attributes & FAT_DIRECTORY)
+	if (result->entry.attributes & FAT_DIRECTORY)
 		node->type = VFS_NODE_DIRECTORY;
 
-	node->index = fat_get_entry_cluster(entry);
+	node->index = fat_get_entry_cluster(&(result->entry));
 	node->parent = super;
 	node->opaque = node_data;
 
-	node_data->first_cluster = fat_get_entry_cluster(entry);
+	node_data->dir_cluster = result->dir_cluster;
+	node_data->first_cluster = fat_get_entry_cluster(&(result->entry));
 	node_data->ref = 0;
 	node_data->hit = 0;
 	thread_mutex_create(&(node_data->mutex));
-	node_data->num_bytes = entry->num_bytes;
+	node_data->num_bytes = result->entry.num_bytes;
 
 	node->lock = fat_vfs_node_lock;
 	node->unlock = fat_vfs_node_unlock;
@@ -105,11 +106,12 @@ static struct vfs_node *unsafe_create(struct vfs_super *super, struct fat_entry 
 	node->write = fat_vfs_node_write;
 	node->get_num_leaves = fat_vfs_node_get_num_leaves;
 	node->get_leaf = fat_vfs_node_get_leaf;
+	node->get_leaf_node = fat_vfs_node_get_leaf_node;
 
 	return node;
 }
 
-static struct vfs_node *safe_get_with_fat_entry(struct vfs_super *super, struct fat_entry *entry)
+static struct vfs_node *safe_get_with_fat_result(struct vfs_super *super, struct fat_result *result)
 {
 	struct fat_vfs_super_data *fat_data;
 	struct vfs_node *node;
@@ -118,11 +120,11 @@ static struct vfs_node *safe_get_with_fat_entry(struct vfs_super *super, struct 
 	fat_data = fat_get_super_data(super);
 
 	thread_mutex_acquire(&(fat_data->mutex));
-	node = unsafe_fat_get(super, fat_get_entry_cluster(entry));
+	node = unsafe_fat_get(super, fat_get_entry_cluster(&(result->entry)));
 
 	if (node == NULL)
 	{
-		node = unsafe_create(super, entry);
+		node = unsafe_create(super, result);
 
 		fat_data->nof_nodes++;
 		LIST_INSERT_HEAD(&(fat_data->node_list), node, lptrs);
@@ -141,7 +143,14 @@ static struct vfs_node *safe_get_with_fat_entry(struct vfs_super *super, struct 
 /* Get the root node. */
 struct vfs_node *fat_vfs_get_root(struct vfs_super *super)
 {
-	return safe_get_with_fat_entry(super, &(fat_get_super_data(super)->root_entry));
+	struct fat_result result;
+
+	/* Fill out a fake result. */
+	result.dir_cluster = FAT_INVALID_CLUSTER;
+	kmemcpy(&(result.entry), &(fat_get_super_data(super)->root_entry), sizeof(struct fat_entry));
+	kmemset(result.lfn, 0, sizeof(result.lfn));
+
+	return safe_get_with_fat_result(super, &result);
 }
 
 /* Get a node by its index. */
@@ -153,16 +162,15 @@ struct vfs_node *fat_vfs_get_by_index(__unused struct vfs_super *super, __unused
 /* Get a node by its path. */
 struct vfs_node *fat_vfs_get_by_path(struct vfs_super *super, const char *path)
 {
-	struct fat_entry entry;
-	char name_buffer[FAT_LFN_NAME_SIZE];
+	struct fat_result result;
 	uint32_t cluster;
 
 	cluster = fat_get_entry_cluster(&(fat_get_super_data(super)->root_entry));
 
-	if (!fat_walk_path(&entry, super, path, cluster, name_buffer))
+	if (fat_walk_path(&result, super, path, cluster) != FAT_OK)
 		return NULL;
 
-	return safe_get_with_fat_entry(super, &entry);
+	return safe_get_with_fat_result(super, &result);
 }
 
 /* Return a node to be collected by the super node. */
@@ -259,24 +267,29 @@ uint fat_vfs_node_get_num_leaves(struct vfs_node *node)
 	if (node->type != VFS_NODE_DIRECTORY)
 		return 1;
 
-	kpanic("not implemented");
+	kpanic("fat_vfs_node_get_num_leaves(): not implemented");
 }
 
 /* Get leaf number n. First "0" leaf always points at itself. */
 inode_t fat_vfs_node_get_leaf(struct vfs_node *node, uint n)
+{
+	return fat_vfs_node_get_leaf_node(node, n)->index;
+}
+
+struct vfs_node *fat_vfs_node_get_leaf_node(struct vfs_node *node, uint n)
 {
 	struct fat_vfs_node_data *node_data;
 
 	node_data = fat_get_node_data(node);
 
 	if (!thread_mutex_held(&(node_data->mutex)))
-		kpanic("fat_vfs_node_get_leaf(): mutex not held");
+		kpanic("fat_vfs_node_get_leaf_node(): mutex not held");
 
 	if (n == 0)
-		return node->index;
+		return node;
 
 	if (node->type != VFS_NODE_DIRECTORY)
-		kpanic("fat_vfs_node_get_leaf(): n > 0 for non-directory node");
+		kpanic("fat_vfs_node_get_leaf_node(): n > 0 for non-directory node");
 
-	kpanic("not implemented");
+	kpanic("fat_vfs_node_get_leaf_node(): not implemented");
 }

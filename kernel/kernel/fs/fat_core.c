@@ -12,7 +12,7 @@
 
 /* Read the next cluster out of FAT, using a cluster number. Returns FAT_OK, FAT_LAST_CLUSTER,
    FAT_BAD_CLUSTER or FAT_ERROR. */
-uint fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t cluster)
+int fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t cluster)
 {
 	struct fat_vfs_super_data *fat_data;
 
@@ -92,28 +92,23 @@ uint fat_read_fat(struct vfs_super *super, uint32_t *next_cluster, uint32_t clus
 
 /* TODO: Implement some sort of caching mechanism. */
 
-/* Walks the path and returns the first cluster of the file or directory pointed at by the path.
-   Returns 0 on fault or if the node could not be found. Also writes the FAT entry into result and
-   the long file name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
-uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const char *path,
-	uint32_t root_cluster, char *name_buffer)
+/* Walks the path and returns the result via the result pointer. Returns FAT_OK or FAT_ERROR on
+   an error. */
+int fat_walk_path(struct fat_result *result, struct vfs_super *super, const char *path,
+	uint32_t root_cluster)
 {
 	const char *node = NULL;
 	const char *next = NULL;
 	bool is_leaf = false;
 	uint node_name_length;
-	uint32_t leaf_cluster = 0;
 	int en_i = 0;
 
-	/* Get the super node data. */
+	kassert(result);
 	kassert(super);
 
 	/* Path has to start with a separator. Will not accept non-sanitized input. */
 	kassert(path[0] == VFS_SEPARATOR);
 	node = path + 1;
-
-	/* Need to have a name buffer... */
-	kassert(name_buffer);
 
 	/* Get the next node in the path. */
 	next = kstrchr(node, VFS_SEPARATOR);
@@ -130,28 +125,27 @@ uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const 
 	if (node_name_length >= FAT_LFN_NAME_SIZE)
 		kpanic("fat_walk_path(): node name is too long");
 
-	while (leaf_cluster == 0)
+	while (1)
 	{
 		/* Read a FAT entry including LFN entries. */
-		en_i = fat_read_entry(result, super, root_cluster, en_i, name_buffer);
+		en_i = fat_read_entry(result, super, root_cluster, en_i);
 
 		/* We got an error */
 		if (en_i == FAT_ENTRY_ERROR)
 			kpanic("fat_walk_path(): error reading entry");
 
 		/* Check if this is the node we're looking for. */
-		if (kstrncmp(name_buffer, node, node_name_length))
+		if (kstrncmp(result->lfn, node, node_name_length))
 		{
-			if (is_leaf && (result->attributes & FAT_DIRECTORY) == 0)
+			if (is_leaf && (result->entry.attributes & FAT_DIRECTORY) == 0)
 			{
 				/* Leaf and the node isn't a directory. This is the leaf we were looking for. */
-				leaf_cluster = fat_get_entry_cluster(result);
+				return FAT_OK;
 			}
-			else if (!is_leaf && (result->attributes & FAT_DIRECTORY) != 0)
+			else if (!is_leaf && (result->entry.attributes & FAT_DIRECTORY) != 0)
 			{
 				/* Not leaf and the node is a directory. Start walking from the node. */
-				leaf_cluster = fat_walk_path(result, super, next, fat_get_entry_cluster(result),
-					name_buffer);
+				return fat_walk_path(result, super, next, fat_get_entry_cluster(&(result->entry)));
 			}
 		}
 
@@ -160,12 +154,11 @@ uint32_t fat_walk_path(struct fat_entry *result, struct vfs_super *super, const 
 			break;
 	}
 
-	return leaf_cluster;
+	return FAT_ERROR;
 }
 
 /* Reads bytes from the disk. Returns the number of read bytes. */
-int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint off,
-	int num)
+int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint off, int num)
 {
 	int num_read = 0;
 	struct fat_vfs_super_data *fat_data;
@@ -249,10 +242,10 @@ int fat_read(struct vfs_super *super, uint32_t first_cluster, void *buf, uint of
 }
 
 /* Reads an entry from a directory, starting from entry idx. Returns the next entry that can be read
-   from the directory, FAT_ENTRY_LAST or FAT_ENTRY_ERROR. Also writes the FAT entry into result and
-   the long file name into the name_buffer (which has to be at least FAT_LFN_NAME_SIZE large). */
-int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t first_cluster,
-	int idx, char *name_buffer)
+   from the directory, FAT_ENTRY_LAST or FAT_ENTRY_ERROR. Also writes to the read entry into result.
+   */
+int fat_read_entry(struct fat_result *result, struct vfs_super *super, uint32_t first_cluster,
+	int idx)
 {
 	byte entry_buffer[FAT_ENTRY_SIZE];
 	struct fat_entry *entry;
@@ -260,8 +253,8 @@ int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t f
 	int iseq = 0;
 	bool in_lfn_sequence = false;
 
-	if (idx < 0)
-		return FAT_ENTRY_ERROR;
+	kassert(idx >= 0);
+	kassert(result);
 
 	/* entry and lfn pointers won't change */
 	entry = (struct fat_entry *)entry_buffer;
@@ -281,7 +274,7 @@ int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t f
 		else if (*(entry_buffer) == FAT_UNUSED_ENTRY)
 			continue;
 
-		if (name_buffer && fat_is_lfn_entry(entry_buffer) && !fat_is_lfn_deleted(lfn))
+		if (fat_is_lfn_entry(entry_buffer) && !fat_is_lfn_deleted(lfn))
 		{
 			/* This is an existing LFN entry. */
 
@@ -291,7 +284,7 @@ int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t f
 				in_lfn_sequence = true;
 				iseq = fat_get_lfn_nr(lfn) - 1;
 
-				kmemset(name_buffer, 0, sizeof(FAT_LFN_NAME_SIZE));
+				kmemset(result->lfn, 0, sizeof(FAT_LFN_NAME_SIZE));
 			}
 			else
 			{
@@ -301,32 +294,33 @@ int fat_read_entry(struct fat_entry *result, struct vfs_super *super, uint32_t f
 			kassert(iseq >= 0);
 
 			/* Copy the portion of characters to the entry name. */
-			fat_copy_all_ascii_chars(name_buffer + iseq * FAT_LFN_CHARS, lfn);
+			fat_copy_all_ascii_chars(result->lfn + iseq * FAT_LFN_CHARS, lfn);
 		}
 		else if (!fat_is_lfn_entry(entry_buffer))
 		{
 			/* This is a normal entry. */
 
-			if (name_buffer && !in_lfn_sequence)
+			if (!in_lfn_sequence)
 			{
 				/* TODO: This is wrong. 20h is used instead of null as empty characters. */
 				/* Copy the entry's name (first 8 are file name, 3 last are extension) */
 
-				kmemset(name_buffer, 0, 13);
-				kstrncpy(name_buffer, entry->file_name, 8);
+				kmemset(result->lfn, 0, 13);
+				kstrncpy(result->lfn, entry->file_name, 8);
 
 				/* Extension might not apply to directories. */
 				if (*(entry->file_name + 8) != 0)
 				{
-					kstrcat(name_buffer, ".");
-					kstrncpy(name_buffer + kstrlen(name_buffer), entry->file_name + 8, 3);
+					kstrcat(result->lfn, ".");
+					kstrncpy(result->lfn + kstrlen(result->lfn), entry->file_name + 8, 3);
 				}
 			}
 
 			/* End of LFN chain (if any). */
 			in_lfn_sequence = false;
 
-			kmemcpy(result, entry, sizeof(struct fat_entry));
+			result->dir_cluster = first_cluster;
+			kmemcpy(&(result->entry), entry, sizeof(struct fat_entry));
 
 			/* We've found an actual entry. Return. */
 			break;

@@ -77,6 +77,9 @@ struct vfs_node
 	/* Get leaf number n. First "0" leaf always points at itself. */
 	inode_t (*get_leaf)(struct vfs_node *node, uint n);
 
+	/* Get leaf number n. First "0" leaf always points at itself. */
+	struct vfs_node * (*get_leaf_node)(struct vfs_node *node, uint n);
+
 	LIST_ENTRY(vfs_node) lptrs;
 };
 
