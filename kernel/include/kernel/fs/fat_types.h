@@ -127,6 +127,13 @@ packed_struct fat_entry
 #define FAT_LFN_CHARS 13
 #define FAT_LFN_NAME_SIZE 256
 
+/* The actual number of characters that can be stored in the maximum number of LFN entries is
+   FAT_LFN_CHARS * 20, but the artificial level limit is FAT_LFN_NAME_SIZE - 1 characters. So to
+   avoid tedious processing, we just use a FAT_LFN_CHARS * 20 + 1 buffer to store the name.
+   The standard requires the first unused character in an entry to be zero so we will always get
+   properly terminated strings. */
+#define FAT_LFN_NAME_BUF_SIZE 261
+
 packed_struct fat_lfn
 {
 	uint8_t ordinal;
@@ -181,7 +188,7 @@ struct fat_result
 {
 	uint32_t dir_cluster;
 	struct fat_entry entry;
-	char lfn[FAT_LFN_NAME_SIZE];
+	char lfn[FAT_LFN_NAME_BUF_SIZE];
 };
 
 #define FAT_OK 0

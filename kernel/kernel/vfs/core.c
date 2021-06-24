@@ -17,6 +17,10 @@ struct vfs_node *vfs_get(const char *path)
 	if (vfs_root == NULL)
 		kpanic("vfs_get(): no root filesystem");
 
+	/* Check if root. */
+	if (path[0] == VFS_SEPARATOR && path[1] == 0)
+		return vfs_root->get_root(vfs_root);
+
 	return vfs_root->get_by_path(vfs_root, path);
 }
 

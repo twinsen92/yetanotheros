@@ -22,7 +22,7 @@ static bool unsafe_truncate(struct vfs_super *super)
 	fat_data = fat_get_super_data(super);
 
 	/* Do not truncate if we're below threshold. */
-	if (fat_data->nof_nodes <= FAT_VFS_NODE_TRUNCATE_THRESHOLD)
+	if (fat_data->nof_nodes <= FAT_VFS_TRUNCATE_THRESHOLD)
 		return false;
 
 	/* Look for an unreferenced node with lowest hit rate. */
@@ -92,15 +92,23 @@ static struct vfs_node *unsafe_create(struct vfs_super *super, struct fat_result
 	node->parent = super;
 	node->opaque = node_data;
 
+	/* Super part. */
 	node_data->dir_cluster = result->dir_cluster;
 	node_data->first_cluster = fat_get_entry_cluster(&(result->entry));
 	node_data->ref = 0;
 	node_data->hit = 0;
+
+	/* Dynamic part. */
 	thread_mutex_create(&(node_data->mutex));
+	node_data->flags = FAT_VFS_LEAVES_DIRTY;
+
+	/* Cache part. (protected by node mutex) */
+	kmemcpy(node_data->name, result->lfn, FAT_LFN_NAME_SIZE);
 	node_data->num_bytes = result->entry.num_bytes;
 
 	node->lock = fat_vfs_node_lock;
 	node->unlock = fat_vfs_node_unlock;
+	node->get_name = fat_vfs_node_get_name;
 	node->get_size = fat_vfs_node_get_size;
 	node->read = fat_vfs_node_read;
 	node->write = fat_vfs_node_write;
@@ -205,6 +213,19 @@ void fat_vfs_node_unlock(struct vfs_node *node)
 	thread_mutex_release(&(fat_get_node_data(node)->mutex));
 }
 
+/* Get the name of this node. */
+const char *fat_vfs_node_get_name(struct vfs_node *node)
+{
+	struct fat_vfs_node_data *node_data;
+
+	node_data = fat_get_node_data(node);
+
+	if (!thread_mutex_held(&(node_data->mutex)))
+		kpanic("fat_vfs_node_get_name(): mutex not held");
+
+	return node_data->name;
+}
+
 /* Get the size of this node. */
 uint fat_vfs_node_get_size(struct vfs_node *node)
 {
@@ -253,6 +274,46 @@ int fat_vfs_node_write(__unused struct vfs_node *node, __unused const void *buf,
 	kpanic("fat_vfs_node_write(): unimplemented");
 }
 
+static void unsafe_maybe_fill_leaves(struct vfs_node *node)
+{
+	struct fat_vfs_node_data *node_data;
+	int idx = 0, next_idx;
+	struct fat_result result;
+
+	if (node->type != VFS_NODE_DIRECTORY)
+		kpanic("unsafe_fill_leaves(): not a directory");
+
+	node_data = fat_get_node_data(node);
+
+	/* Check if there's anything to do. */
+	if (!(node_data->flags & FAT_VFS_LEAVES_DIRTY))
+		return;
+
+	node_data->num_leaves = 0;
+
+	while (1)
+	{
+		/* Read the next entry. */
+		next_idx = fat_read_entry(&result, node->parent, node_data->first_cluster, idx);
+
+		if (next_idx == FAT_ENTRY_ERROR)
+			kpanic("unsafe_fill_leaves(): bad entry");
+
+		if (next_idx == FAT_ENTRY_LAST)
+			break;
+
+		/* TODO: First cache entry is sort of useless... */
+		/* Entry read! */
+		node_data->leaves[node_data->num_leaves] = idx;
+		node_data->num_leaves++;
+
+		idx = next_idx;
+	}
+
+	/* Flip the flag. */
+	node_data->flags ^= FAT_VFS_LEAVES_DIRTY;
+}
+
 /* If this node is a directory, get the number of leaves in it. For other types of nodes, this
    is always 1. */
 uint fat_vfs_node_get_num_leaves(struct vfs_node *node)
@@ -261,13 +322,19 @@ uint fat_vfs_node_get_num_leaves(struct vfs_node *node)
 
 	node_data = fat_get_node_data(node);
 
+	/* Do some usual checks. */
+
 	if (!thread_mutex_held(&(node_data->mutex)))
 		kpanic("fat_vfs_node_get_num_leaves(): mutex not held");
 
 	if (node->type != VFS_NODE_DIRECTORY)
 		return 1;
 
-	kpanic("fat_vfs_node_get_num_leaves(): not implemented");
+	/* Make sure the leaves cache is up to date and return the result. */
+
+	unsafe_maybe_fill_leaves(node);
+
+	return node_data->num_leaves;
 }
 
 /* Get leaf number n. First "0" leaf always points at itself. */
@@ -276,11 +343,17 @@ inode_t fat_vfs_node_get_leaf(struct vfs_node *node, uint n)
 	return fat_vfs_node_get_leaf_node(node, n)->index;
 }
 
+/* Get leaf number n. First "0" leaf always points at itself. */
 struct vfs_node *fat_vfs_node_get_leaf_node(struct vfs_node *node, uint n)
 {
+	struct fat_result result;
 	struct fat_vfs_node_data *node_data;
+	uint i;
+	int idx;
 
 	node_data = fat_get_node_data(node);
+
+	/* Do some usual checks. */
 
 	if (!thread_mutex_held(&(node_data->mutex)))
 		kpanic("fat_vfs_node_get_leaf_node(): mutex not held");
@@ -291,5 +364,38 @@ struct vfs_node *fat_vfs_node_get_leaf_node(struct vfs_node *node, uint n)
 	if (node->type != VFS_NODE_DIRECTORY)
 		kpanic("fat_vfs_node_get_leaf_node(): n > 0 for non-directory node");
 
-	kpanic("fat_vfs_node_get_leaf_node(): not implemented");
+	/* Make sure the leaves cache is up to date. */
+	unsafe_maybe_fill_leaves(node);
+
+	/* Handle out of bounds indices. */
+	if (n >= node_data->num_leaves)
+		kpanic("fat_vfs_node_get_leaf_node(): n >= num_leaves");
+
+	if (n < FAT_VFS_CACHE_LEAVES)
+	{
+		/* Cache hit. */
+		idx = fat_read_entry(&result, node->parent, node_data->first_cluster, node_data->leaves[n]);
+
+		if (idx == FAT_ENTRY_ERROR)
+			kpanic("fat_vfs_node_get_leaf_node(): bad entry (cache hit)");
+	}
+	else
+	{
+		/* Read the directory table starting at the end of the cache. We iterate exactly as many
+		   times as the number of leaves to skip. */
+		idx = node_data->leaves[FAT_VFS_CACHE_LEAVES - 1];
+
+		for (i = 0; i < n - FAT_VFS_CACHE_LEAVES + 2; i++)
+		{
+			if (idx == FAT_ENTRY_LAST)
+				kpanic("fat_vfs_node_get_leaf_node(): unexpected end of entries");
+
+			idx = fat_read_entry(&result, node->parent, node_data->first_cluster, idx);
+
+			if (idx == FAT_ENTRY_ERROR)
+				kpanic("fat_vfs_node_get_leaf_node(): bad entry");
+		}
+	}
+
+	return safe_get_with_fat_result(node->parent, &result);
 }

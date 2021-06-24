@@ -9,7 +9,11 @@
 
 /* kernel/vfs.h interface related */
 
-#define FAT_VFS_NODE_TRUNCATE_THRESHOLD 100
+/* Minimum number of VFS nodes in VFS super until nodes will start being truncated. */
+#define FAT_VFS_TRUNCATE_THRESHOLD 30
+
+/* Maximum number of leaves that can be stored in the VFS node cache. */
+#define FAT_VFS_CACHE_LEAVES 16
 
 struct fat_vfs_super_data
 {
@@ -44,6 +48,9 @@ static inline uint32_t fat_first_sector_of_cluster(const struct fat_vfs_super_da
 	return (cluster - FAT_CLUSTER_OFFSET) * s->bs.sectors_per_cluster + s->first_data_sector;
 }
 
+#define FAT_VFS_LEAVES_DIRTY 0x01 /* Leaves have changed dirty flag. */
+#define FAT_VFS_ENTRY_DIRTY 0x02 /* Entry details have changed dirty flag. */
+
 struct fat_vfs_node_data
 {
 	/* Super part. To modify, super lock has to be held.*/
@@ -53,10 +60,16 @@ struct fat_vfs_node_data
 	uint ref; /* Current number of references to this node. */
 	uint hit; /* Number of times this node has been found. */
 
-	/* Dynamic part. */
+	/* Dynamic part. (protected by node mutex) */
 
 	struct thread_mutex mutex;
+	uint flags; /* When set, node has been dirtied (modified somehow). */
+
+	/* Cache part. (protected by node mutex) */
+	char name[FAT_LFN_NAME_SIZE]; /* File name. */
 	uint32_t num_bytes; /* Number of bytes the node occupies. */
+	uint num_leaves; /* Number of leaves stored in leaves array. */
+	int leaves[FAT_VFS_CACHE_LEAVES]; /* Indices where leaves start. */
 };
 
 #define fat_get_super_data(super) ((struct fat_vfs_super_data *)(super)->opaque)
@@ -83,6 +96,9 @@ void fat_vfs_node_lock(struct vfs_node *node);
 
 /* Unlocks the node to allowe other threads to modify it. */
 void fat_vfs_node_unlock(struct vfs_node *node);
+
+/* Get the name of this node. */
+const char *fat_vfs_node_get_name(struct vfs_node *node);
 
 /* Get the size of this node. */
 uint fat_vfs_node_get_size(struct vfs_node *node);

@@ -284,7 +284,11 @@ int fat_read_entry(struct fat_result *result, struct vfs_super *super, uint32_t 
 				in_lfn_sequence = true;
 				iseq = fat_get_lfn_nr(lfn) - 1;
 
-				kmemset(result->lfn, 0, sizeof(FAT_LFN_NAME_SIZE));
+				/* We expect no buffer overflows. We also want at least one more byte to put zero
+				   in it. */
+				kassert((iseq + 1) * FAT_LFN_CHARS < FAT_LFN_NAME_BUF_SIZE);
+
+				kmemset(result->lfn, 0, FAT_LFN_NAME_BUF_SIZE);
 			}
 			else
 			{

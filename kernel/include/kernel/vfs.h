@@ -60,6 +60,9 @@ struct vfs_node
 	/* Unlocks the node to allowe other threads to modify it. */
 	void (*unlock)(struct vfs_node *node);
 
+	/* Get the name of this node. */
+	const char * (*get_name)(struct vfs_node *node);
+
 	/* Get the size of this node. */
 	uint (*get_size)(struct vfs_node *node);
 
