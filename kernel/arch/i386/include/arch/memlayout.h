@@ -18,7 +18,7 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
-#include <arch/cpu/paging_types.h>
+#include <arch/paging_types.h>
 
 #define KM_PHYS_BASE				((paddr_t)(ASM_KM_PHYS_BASE))
 #define KM_VIRT_BASE				((vaddr_t)(ASM_KM_VIRT_BASE))

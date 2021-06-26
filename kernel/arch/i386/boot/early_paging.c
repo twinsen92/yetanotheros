@@ -4,7 +4,7 @@
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <arch/memlayout.h>
-#include <arch/cpu/paging.h>
+#include <arch/paging.h>
 
 #include "early_debug.h"
 

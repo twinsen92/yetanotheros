@@ -10,8 +10,8 @@
 #include <arch/init.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/cpu/apic.h>
-#include <arch/cpu/paging.h>
 
 packed_struct ap_entry_args
 {

@@ -6,8 +6,8 @@
 #include <kernel/init.h>
 #include <kernel/utils.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/palloc.h>
-#include <arch/cpu/paging.h>
 
 #define PALLOC_PAGE_MAGIC 0x12345678
 

@@ -7,7 +7,7 @@
 #include <arch/cpu.h>
 #include <arch/palloc.h>
 #include <arch/memlayout.h>
-#include <arch/cpu/paging.h>
+#include <arch/paging.h>
 
 #define HEAP_ALLOC_MAGIC 0xA110CA73
 

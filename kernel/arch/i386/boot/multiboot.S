@@ -3,7 +3,7 @@
 
 #include <kernel/boot/multiboot.h>
 #include <arch/memlayout.h>
-#include <arch/cpu/paging_types.h>
+#include <arch/paging_types.h>
 
 /* Declare constants for the multiboot header. */
 .set MB_FLAGS,		MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO

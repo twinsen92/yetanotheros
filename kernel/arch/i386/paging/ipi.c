@@ -1,12 +1,12 @@
-/* cpu/paging_ipi.c - paging IPI communication subsystem */
+/* arch/i386/paging/ipi.c - paging IPI communication subsystem */
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/cpu/apic.h>
-#include <arch/cpu/paging.h>
 
 /* IPI spinlock. While held, only the CPU holding the lock can issue INT_FLUSH_TLB_IPIs. */
 static struct cpu_spinlock ipi_spinlock;
@@ -63,7 +63,6 @@ static void unsafe_propagate_to_cpu(struct x86_cpu *cpu)
 	while (atomic_load(&ipi_received) == false)
 		cpu_relax();
 }
-
 
 /* Initializes the paging IPI subsystem. */
 void init_paging_ipi(void)

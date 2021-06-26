@@ -9,9 +9,9 @@
 #include <kernel/ticks.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/proc.h>
 #include <arch/thread.h>
-#include <arch/cpu/paging.h>
 #include <arch/cpu/selectors.h>
 
 /* Scheduler lock. This applies to all structures used by the scheduler on all CPUs. */

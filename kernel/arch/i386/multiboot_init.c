@@ -4,8 +4,8 @@
 #include <kernel/boot/multiboot.h>
 #include <arch/init.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/palloc.h>
-#include <arch/cpu/paging.h>
 
 static const char *mb_mmap_type_texts[] = {
 	"invalid",

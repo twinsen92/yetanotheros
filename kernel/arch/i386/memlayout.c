@@ -3,7 +3,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <arch/memlayout.h>
-#include <arch/cpu/paging_types.h>
+#include <arch/paging_types.h>
 
 static inline const struct vm_region *get_region_v(vaddr_t v)
 {

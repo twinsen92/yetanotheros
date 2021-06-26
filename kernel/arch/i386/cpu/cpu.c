@@ -7,8 +7,8 @@
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/memlayout.h>
+#include <arch/paging.h>
 #include <arch/cpu/apic.h>
-#include <arch/cpu/paging.h>
 
 #define MAX_CPUS 8
 #define BOOT_CPU 0

@@ -1,11 +1,11 @@
 /* cpu/paging.h - arch dependent declarations of x86 paging subsystem */
-#ifndef ARCH_I386_CPU_PAGING_H
-#define ARCH_I386_CPU_PAGING_H
+#ifndef ARCH_I386_PAGING_H
+#define ARCH_I386_PAGING_H
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <arch/memlayout.h>
-#include <arch/cpu/paging_types.h>
+#include <arch/paging_types.h>
 
 /* We want to keep the paging structures of the currently used page directory and the base kernel
    paging structures always mapped to the virtual memory space. We will use the two last directory
@@ -54,16 +54,29 @@ static inline bool is_using_kernel_page_tables(void)
 	return pd == km_paddr(kernel_pd);
 }
 
+/*
+	General paging utilities.
+*/
+
+/* Map physical page p to virtual address v using given flags for page tables in pd. */
+void paging_map(pde_t *pd, vaddr_t v, paddr_t p, pflags_t flags);
+
+/*
+	Kernel page tables management.
+*/
+
 /* Initializes the interface of paging.h */
 void init_paging(void);
 
 /* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
 bool kp_lock_held(void);
 
-/* Map one physical page to one virtual page. */
+/* Map one physical page to one virtual page in kernel page tables. */
 void kp_map(vaddr_t v, paddr_t p);
 
-/* Paging inter-processor communication. */
+/*
+	Paging inter-processor communication.
+*/
 
 /* Initializes the paging IPI subsystem. */
 void init_paging_ipi(void);

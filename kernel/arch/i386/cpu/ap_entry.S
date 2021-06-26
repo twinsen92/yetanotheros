@@ -1,8 +1,8 @@
 /* ap_entry.S - entry code for AP CPUs */
 
 #include <arch/memlayout.h>
+#include <arch/paging_types.h>
 #include <arch/cpu/gdt.h>
-#include <arch/cpu/paging_types.h>
 #include <arch/cpu/selectors.h>
 
 /* This is the offset of the ap_entry.S code in virtual memory, as linked by the linker script. We
