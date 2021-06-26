@@ -1,8 +1,11 @@
 /* kernel/test/fat_test.c - FAT test stuff */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
+#include <kernel/proc.h>
+#include <kernel/scheduler.h>
 #include <kernel/utils.h>
 #include <kernel/vfs.h>
+#include <arch/kernel/cpu.h>
 
 static void dump_tree(struct vfs_super *super, struct vfs_node *parent, struct vfs_node *dir, uint level)
 {
@@ -48,39 +51,58 @@ static void dump_tree(struct vfs_super *super, struct vfs_node *parent, struct v
 	}
 }
 
-noreturn fat_test_main(struct vfs_super *test)
+static void dump_tree_main(struct vfs_super *test)
 {
-	char buf[16];
-	uint num;
-
 	struct vfs_node *root_node = test->get_root(test);
 	root_node->lock(root_node);
 	kdprintf("(root)\n");
 	dump_tree(test, NULL, root_node, 1);
 	root_node->unlock(root_node);
 	test->put(test, root_node);
+}
 
-	/* Read a file and print it's contents to the debug output. */
-	kmemset(buf, 0, sizeof(buf));
-
-	struct file *f = vfs_open("/something/ffffff/test.txt");
+static void competing_thread_main(void *cookie)
+{
+	const char *name = (const char*)cookie;
+	uint num;
+	char buf[16];
 
 	while (1)
 	{
-		num = f->read(f, buf, sizeof(buf) - 1);
+		struct file *f = vfs_open("/something/testA.txt");
+		struct file *f2 = vfs_open("/soemthing/testA.txt");
 
-		if (num == 0)
-			break;
+		kassert(f);
+		kassert(f2 == NULL);
 
-		buf[num] = 0;
+		while (1)
+		{
+			num = f->read(f, buf, 1);
 
-		kdprintf("%s", buf);
+			if (num == 0)
+				break;
+
+			buf[1] = 0;
+
+			kdprintf("%s%s ", name, buf);
+
+			thread_sleep(200);
+		}
+
+		vfs_close(f);
 	}
+}
 
-	struct file *f2 = vfs_open("/soemthing/ffffff/test.txt");
+noreturn fat_test_main(struct vfs_super *test)
+{
+	thread_create(PID_KERNEL, competing_thread_main, "A", "FAT test A");
+	thread_create(PID_KERNEL, competing_thread_main, "B", "FAT test B");
+	thread_create(PID_KERNEL, competing_thread_main, "C", "FAT test C");
+	thread_create(PID_KERNEL, competing_thread_main, "D", "FAT test D");
+	thread_create(PID_KERNEL, competing_thread_main, "E", "FAT test E");
 
-	kassert(f2 == NULL);
+	dump_tree_main(test);
 
-	asm volatile ("cli");
-	while(1);
+	while (1)
+		cpu_relax();
 }

@@ -63,6 +63,7 @@ static struct vfs_node *unsafe_fat_get(struct vfs_super *super, uint32_t first_c
 	{
 		node_data = fat_get_node_data(node);
 
+		/* TODO: This will not work for empty files. Need to compare something else... */
 		if (node_data->first_cluster == first_cluster)
 			return node;
 	}
