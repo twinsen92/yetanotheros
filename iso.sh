@@ -13,3 +13,5 @@ menuentry "yaos2_multiboot" {
 }
 EOF
 grub-mkrescue -o yaos2_multiboot.iso isodir
+
+cp -rf sysroot/* $HD_MOUNT
