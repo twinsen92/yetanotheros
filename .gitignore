@@ -8,3 +8,4 @@ env.sh
 *.log
 *.gch
 memdump
+system.img
