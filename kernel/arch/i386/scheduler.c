@@ -59,6 +59,7 @@ static void thread_destroy(struct thread *thread)
 	LIST_REMOVE(thread, lptrs);
 	/* thread->stack also belongs to us */
 	kfree(thread->arch->stack);
+	kfree(thread->arch);
 	kfree(thread);
 
 	if (LIST_EMPTY(&(proc->threads)))
@@ -90,19 +91,6 @@ void init_global_scheduler(void)
 	LIST_INSERT_HEAD(&processes, &kernel_process, pointers);
 
 	STAILQ_INIT(&queue);
-}
-
-/* Acquire the global scheduler lock. Doing this will prevent any core from scheduling new threads
-   or modifying thread's properties. */
-void sched_global_acquire(void)
-{
-	cpu_spinlock_acquire(&global_scheduler_lock);
-}
-
-/* Undoes sched_global_acquire(). */
-void sched_global_release(void)
-{
-	cpu_spinlock_release(&global_scheduler_lock);
 }
 
 static inline void store_interrupts(struct thread *thread, struct x86_cpu *cpu)
