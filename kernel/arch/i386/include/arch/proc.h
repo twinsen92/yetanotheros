@@ -4,9 +4,11 @@
 
 #include <kernel/addr.h>
 #include <kernel/proc.h>
+#include <kernel/thread.h>
 
 struct arch_proc
 {
+	struct thread_mutex pd_mutex; /* Page directory modification mutex. */
 	paddr_t pd; /* Page directory used by this process. */
 };
 

@@ -111,6 +111,7 @@ struct file
 
 	int (*read)(struct file *f, void *buf, int num);
 	int (*write)(struct file *f, const void *buf, int num);
+	void (*seek_beg)(struct file *f, uint offset);
 	/* TODO: Add seek. */
 };
 

@@ -45,6 +45,13 @@ static int file_write(struct file *f, const void *buf, int num)
 	return result;
 }
 
+static void file_seek_beg(struct file *f, uint offset)
+{
+	thread_mutex_acquire(&(f->mutex));
+	f->offset = offset;
+	thread_mutex_release(&(f->mutex));
+}
+
 /* Opens a new file object using the path. Returns null if not found. */
 struct file *vfs_open(const char *path)
 {
@@ -68,6 +75,7 @@ struct file *vfs_open(const char *path)
 	/* Set up the interface. */
 	file->read = file_read;
 	file->write = file_write;
+	file->seek_beg = file_seek_beg;
 
 	return file;
 }

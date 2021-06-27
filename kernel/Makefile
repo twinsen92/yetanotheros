@@ -35,6 +35,7 @@ kernel/cpu/checkpoint.o \
 kernel/devices/ata_pio.o \
 kernel/devices/pci.o \
 kernel/drivers/ata/generic.o \
+kernel/exec/elf/core.o \
 kernel/fs/fat_core.o \
 kernel/fs/fat_vfs.o \
 kernel/fs/fat.o \

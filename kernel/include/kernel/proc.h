@@ -2,6 +2,8 @@
 #ifndef _KERNEL_PROC_H
 #define _KERNEL_PROC_H
 
+#include <kernel/addr.h>
+#include <kernel/cdefs.h>
 #include <kernel/queue.h>
 #include <kernel/thread.h>
 
@@ -28,5 +30,21 @@ struct proc
 };
 
 LIST_HEAD(proc_list, proc);
+
+/* Creates a new proc object. */
+struct proc *proc_alloc(const char *name);
+
+/* Releases a given proc object and all related resources. */
+void proc_free(struct proc *proc);
+
+#define VM_USER 0x01
+#define VM_WRITE 0x02
+#define VM_EXEC 0x04
+
+/* Reserves a physical page for the virtual memory page pointed at by v. */
+void proc_vmreserve(struct proc *proc, vaddr_t v, uint flags);
+
+/* Write to the process' virtual memory. */
+void proc_vmwrite(struct proc *proc, vaddr_t v, const void *buf, size_t num);
 
 #endif
