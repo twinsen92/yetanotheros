@@ -304,8 +304,12 @@ static void unsafe_maybe_fill_leaves(struct vfs_node *node)
 			break;
 
 		/* TODO: First cache entry is sort of useless... */
+
+		/* Write to cache. */
+		if (node_data->num_leaves < FAT_VFS_CACHE_LEAVES)
+			node_data->leaves[node_data->num_leaves] = idx;
+
 		/* Entry read! */
-		node_data->leaves[node_data->num_leaves] = idx;
 		node_data->num_leaves++;
 
 		idx = next_idx;
