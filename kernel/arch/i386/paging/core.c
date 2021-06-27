@@ -1,6 +1,7 @@
 /* arch/i386/paging/core.c - core x86 utilities for creating and editing page tables */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
+#include <kernel/paging.h>
 #include <kernel/utils.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
@@ -51,7 +52,7 @@ paddr_t paging_alloc_dir(void)
 }
 
 /* Free a PD. */
-void paging_free_dir(paddr_t pd)
+void paging_free_dir(__unused paddr_t pd)
 {
 	/* Need to be using kernel pages. */
 	kassert(is_using_kernel_page_tables());
@@ -162,6 +163,6 @@ void vmwrite(paddr_t pd, vaddr_t v, const void *buf, size_t num)
 		num -= batch;
 
 		/* Move onto the next page. */
-		v = mask_to_page(v) + PAGE_SIZE;
+		v = (vaddr_t)(mask_to_page(v) + PAGE_SIZE);
 	}
 }

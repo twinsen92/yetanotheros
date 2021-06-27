@@ -1,10 +1,10 @@
 /* multiboot_init.c - multiboot x86 init */
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
+#include <kernel/paging.h>
 #include <kernel/boot/multiboot.h>
 #include <arch/init.h>
 #include <arch/memlayout.h>
-#include <arch/paging.h>
 #include <arch/palloc.h>
 
 static const char *mb_mmap_type_texts[] = {

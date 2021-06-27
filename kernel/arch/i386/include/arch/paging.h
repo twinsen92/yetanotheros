@@ -4,6 +4,7 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/paging.h>
 #include <arch/memlayout.h>
 #include <arch/paging_types.h>
 
@@ -21,7 +22,6 @@ extern pte_t *const kernel_page_tables;
 
 /* Dimensions of paging structures. */
 
-#define PAGE_SIZE 4096
 #define PD_LENGTH (PAGE_SIZE / sizeof(pde_t))
 #define PT_LENGTH (PAGE_SIZE / sizeof(pde_t))
 
@@ -33,14 +33,9 @@ extern pte_t *const kernel_page_tables;
 #define get_kernel_pd_entry(p) (kernel_pd + get_pd_index(p))
 #define get_pt_entry(p) (current_page_tables + (get_pd_index(p) * PT_LENGTH + get_pt_index(p)))
 #define get_kernel_pt_entry(p) (kernel_page_tables + (get_pd_index(p) * PT_LENGTH + get_pt_index(p)))
-#define get_sub_page_addr(p) (((uint32_t)(p)) & 0x00000fff)
 
-#define align_to_next_page(x) ((uint32_t)(x + PAGE_SIZE - 1) & ((uint32_t)0xfffff000))
-#define mask_to_page(x) ((uint32_t)(x) & (uint32_t)0xfffff000)
-#define mask_to_page_table(x) ((uint32_t)(x) & (uint32_t)0xffc00000)
-
-#define is_aligned_to_page_size(x) (((uint32_t)(x)) == mask_to_page(x))
-#define is_aligned_to_page_table(x) (((uint32_t)(x)) == mask_to_page_table(x))
+#define mask_to_page_table(x) ((uintptr_t)(x) & (uintptr_t)0xffc00000)
+#define is_aligned_to_page_table(x) (((uintptr_t)(x)) == mask_to_page_table(x))
 
 #define asm_set_cr3(v) asm volatile ("movl %0, %%cr3" : : "r" ((v)) : "memory")
 #define asm_invlpg(v) asm volatile ("invlpg (%0)" : : "r" ((v)) : "memory")

@@ -4,9 +4,10 @@
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
+#include <kernel/paging.h>
 #include <arch/cpu.h>
-#include <arch/palloc.h>
 #include <arch/memlayout.h>
+#include <arch/palloc.h>
 #include <arch/paging.h>
 
 #define HEAP_ALLOC_MAGIC 0xA110CA73

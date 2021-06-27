@@ -3,6 +3,7 @@
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
+#include <kernel/paging.h>
 #include <arch/memlayout.h>
 #include <arch/paging.h>
 
