@@ -58,8 +58,20 @@ static inline bool is_using_kernel_page_tables(void)
 	General paging utilities.
 */
 
+/* Allocate a new PD. */
+paddr_t paging_alloc_dir(void);
+
+/* Free a PD. */
+void paging_free_dir(paddr_t pd);
+
 /* Map physical page p to virtual address v using given flags for page tables in pd. */
-void paging_map(pde_t *pd, vaddr_t v, paddr_t p, pflags_t flags);
+void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags);
+
+/* Get the physical address of the virutal address v in page tables pd. */
+paddr_t paging_get(paddr_t pd, vaddr_t v);
+
+/* Write num number of bytes from buf into the virtual address v of page tables pd. */
+void vmwrite(paddr_t pd, vaddr_t v, const void *buf, size_t num);
 
 /*
 	Kernel page tables management.

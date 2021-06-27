@@ -41,7 +41,7 @@ void kp_map(vaddr_t v, paddr_t p)
 	   memory space. */
 	prev_cr3 = cpu_set_cr3(p_kernel_pd);
 
-	paging_map(kernel_pd, v, p, flags);
+	paging_map(p_kernel_pd, v, p, flags);
 	/* Notify other CPUs of these changes. */
 	paging_propagate_changes(p_kernel_pd, v, flags & PAGE_BIT_GLOBAL);
 	/* If we think we're not going to switch CR3, we should do INVLPG */
