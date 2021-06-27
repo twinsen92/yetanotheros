@@ -20,7 +20,6 @@ struct serial
 {
 	uint16_t port;
 
-
 	tid_t handler;
 	struct thread_mutex mutex;
 	struct thread_cond data_available;
@@ -213,7 +212,7 @@ static void init_port(struct serial *s, uint16_t port, uint16_t divisor)
 	pio_outb(COM_INT_ENABL_REG(port), COM_IER_INPUT_BIT | COM_IER_NO_OUTPUT_BIT); /* Enable some interrupts. */
 
 	/* Create handler thread. */
-	s->handler = thread_create(PID_KERNEL, serial_handler_main, s, "serial port handler");
+	s->handler = schedule_kernel_thread(serial_handler_main, s, "serial port handler");
 }
 
 /* arch/serial.h interface */

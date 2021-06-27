@@ -13,6 +13,9 @@ void init_global_scheduler(void);
    CPU and starts the scheduler loop. This is final. */
 noreturn enter_scheduler(void);
 
+/* Entry point for threads. */
+void thread_entry(void);
+
 /* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
 void sched_thread_wait(struct thread_cond *cond, struct cpu_spinlock *spinlock);
 

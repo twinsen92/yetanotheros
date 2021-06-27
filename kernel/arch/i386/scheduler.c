@@ -22,16 +22,38 @@ static struct cpu_checkpoint scheduler_checkpoint;
 
 /* Process list. */
 static struct proc kernel_process;
-static struct arch_proc kernel_arch_process;
+static struct arch_proc _kernel_arch_process;
 static struct proc_list processes;
-__unused static atomic_uint next_pid = 1;
+static atomic_uint next_pid = 1;
+static atomic_uint next_tid = 1;
 
 /* Thread queue. */
 static STAILQ_HEAD(thread_queue, thread) queue;
 
+/* arch/scheduler.h interface */
+
+/* Initializes the global scheduler data and locks. */
+void init_global_scheduler(void)
+{
+	cpu_spinlock_create(&global_scheduler_lock, "global scheduler");
+
+	cpu_checkpoint_create(&scheduler_checkpoint);
+
+	_kernel_arch_process.pd = vm_map_rev_walk(kernel_pd, true);
+	kernel_process.arch = &_kernel_arch_process;
+	LIST_INIT(&(kernel_process.threads));
+	kernel_process.pid = PID_KERNEL;
+	kernel_process.state = PROC_NEW;
+
+	LIST_INIT(&processes);
+	LIST_INSERT_HEAD(&processes, &kernel_process, pointers);
+
+	STAILQ_INIT(&queue);
+}
+
 /* Adds the given thread to the given process and sets both to READY. Requires the process table
    lock. */
-static void thread_new_insert(struct proc *proc, struct thread *thread)
+static void insert_thread(struct proc *proc, struct thread *thread)
 {
 	kassert(cpu_spinlock_held(&global_scheduler_lock));
 
@@ -46,7 +68,7 @@ static void thread_new_insert(struct proc *proc, struct thread *thread)
 
 /* Removes the given thread, marking it THREAD_TRUNCATE. Also checks if the parent process can be
    marked as PROC_DEFUNCT. */
-static void thread_destroy(struct thread *thread)
+static void destroy_thread(struct thread *thread)
 {
 	struct proc *proc;
 
@@ -58,9 +80,7 @@ static void thread_destroy(struct thread *thread)
 	proc = thread->parent;
 	LIST_REMOVE(thread, lptrs);
 	/* thread->stack also belongs to us */
-	kfree(thread->arch->stack);
-	kfree(thread->arch);
-	kfree(thread);
+	thread_free(thread);
 
 	if (LIST_EMPTY(&(proc->threads)))
 	{
@@ -70,27 +90,6 @@ static void thread_destroy(struct thread *thread)
 	}
 
 	/* TODO: Free process' resources. */
-}
-
-/* arch/scheduler.h interface */
-
-/* Initializes the global scheduler data and locks. */
-void init_global_scheduler(void)
-{
-	cpu_spinlock_create(&global_scheduler_lock, "global scheduler");
-
-	cpu_checkpoint_create(&scheduler_checkpoint);
-
-	kernel_arch_process.pd = vm_map_rev_walk(kernel_pd, true);
-	kernel_process.arch = &kernel_arch_process;
-	LIST_INIT(&(kernel_process.threads));
-	kernel_process.pid = PID_KERNEL;
-	kernel_process.state = PROC_NEW;
-
-	LIST_INIT(&processes);
-	LIST_INSERT_HEAD(&processes, &kernel_process, pointers);
-
-	STAILQ_INIT(&queue);
 }
 
 static inline void store_interrupts(struct thread *thread, struct x86_cpu *cpu)
@@ -123,10 +122,11 @@ noreturn enter_scheduler(void)
 	/* Create the scheduler thread. */
 	cpu_spinlock_acquire(&global_scheduler_lock);
 	cpu->scheduler_thread.arch = &(cpu->scheduler_arch_thread);
-	x86_thread_construct_empty(&(cpu->scheduler_thread), &kernel_process, "scheduler thread",
-		KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	x86_thread_construct_empty(&(cpu->scheduler_thread), "scheduler thread", KERNEL_CODE_SELECTOR,
+		KERNEL_DATA_SELECTOR);
+	cpu->scheduler_thread.parent = &kernel_process;
 	cpu->scheduler = &(cpu->scheduler_thread);
-	thread_new_insert(&kernel_process, cpu->scheduler);
+	insert_thread(&kernel_process, cpu->scheduler);
 	/* The scheduler thread should not be scheduled! */
 	cpu->scheduler->state = THREAD_SCHEDULER;
 	cpu_spinlock_release(&global_scheduler_lock);
@@ -159,7 +159,7 @@ noreturn enter_scheduler(void)
 		if (thread->state == THREAD_EXITED)
 		{
 			/* Thread has exited. Destroy it and try getting a new thread from the queue. */
-			thread_destroy(thread);
+			destroy_thread(thread);
 			goto _scheduler_continue;
 		}
 
@@ -203,7 +203,7 @@ noreturn enter_scheduler(void)
 			x86_thread_switch(cpu->scheduler->arch, thread->arch);
 
 			/* TODO: Switch back to kernel CR3. */
-			cpu_set_cr3(kernel_arch_process.pd);
+			cpu_set_cr3(kernel_process.arch->pd);
 
 			/* Store the thread's state of interrupts. */
 			store_interrupts(cpu->thread, cpu);
@@ -243,6 +243,20 @@ static void reschedule(void)
 
 	/* Do the switch. The scheduler loop takes care of interrupts stack. */
 	x86_thread_switch(thread->arch, cpu->scheduler->arch);
+}
+
+/* Entry point for threads. */
+void thread_entry(void)
+{
+	/* We enter with the global scheduler lock. We have to release it for other schedulers to work. */
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	if((cpu_get_eflags() & EFLAGS_IF) == 0)
+		kpanic("thread_entry(): interrupts not enabled");
+
+	struct thread *thread = get_current_thread();
+	thread->entry(thread->cookie);
+	thread_exit();
 }
 
 /* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
@@ -305,48 +319,6 @@ void sched_thread_notify_one(struct thread_cond *cond)
 
 /* kernel/scheduler.h */
 
-static void thread_entry(void)
-{
-	/* We enter with the global scheduler lock. We have to release it for other schedulers to work. */
-	cpu_spinlock_release(&global_scheduler_lock);
-
-	if((cpu_get_eflags() & EFLAGS_IF) == 0)
-		kpanic("thread_entry(): interrupts not enabled");
-
-	struct thread *thread = get_current_thread();
-	thread->entry(thread->cookie);
-	thread_exit();
-}
-
-/* Creates a kernel thread in the process identified by pid. */
-tid_t thread_create(pid_t pid, void (*entry)(void *), void *cookie, const char *name)
-{
-	tid_t tid;
-	struct proc *proc;
-	struct thread *thread;
-	vaddr_t stack;
-
-	if (pid != PID_KERNEL)
-		kpanic("thread_create(): pid != PID_KERNEL unsupported");
-
-	proc = &kernel_process;
-	stack = kalloc(HEAP_NORMAL, 16, 4096);
-	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
-	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
-	x86_thread_construct_kthread(thread, proc, name, stack, 4096, &thread_entry, entry,
-		cookie, true);
-
-	/* We get the ID before putting the thread into the scheduler structures. The thread might exit
-	   and be destroyed before we even return from this function. */
-	tid = thread->tid;
-
-	cpu_spinlock_acquire(&global_scheduler_lock);
-	thread_new_insert(proc, thread);
-	cpu_spinlock_release(&global_scheduler_lock);
-
-	return tid;
-}
-
 /* Gets the object of the thread currently running on the current CPU. */
 struct thread *get_current_thread(void)
 {
@@ -361,6 +333,87 @@ struct thread *get_current_thread(void)
 
 	return thread;
 }
+
+/* Get the process object from the scheduler. Returns NULL if the process could not be found.
+   Acquires the scheduler lock if the process was found. */
+struct proc *sheduler_get_proc(pid_t pid)
+{
+	struct proc *proc;
+
+	cpu_spinlock_acquire(&global_scheduler_lock);
+
+	LIST_FOREACH(proc, &processes, pointers)
+		if (proc->pid == pid)
+			return proc;
+
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	return NULL;
+}
+
+/* Put the process object back into the scheduler. Releases the scheduler lock if the process is not
+   NULL. */
+void sheduler_put_proc(struct proc *proc)
+{
+	/* Ignore calls with NULL. */
+	if (proc == NULL)
+		return;
+
+	cpu_spinlock_release(&global_scheduler_lock);
+}
+
+/* Insert a proc and its main thread into the scheduler, making it runnable. Transfers ownership
+   of the proc object. */
+pid_t schedule_proc(struct proc *proc, struct thread *thread)
+{
+	pid_t pid;
+	tid_t tid;
+
+	/* Assign a PID and a TID. */
+	pid = atomic_fetch_add(&next_pid, 1);
+	proc->pid = pid;
+	proc->state = PROC_NEW;
+	tid = atomic_fetch_add(&next_tid, 1);
+	thread->tid = tid;
+
+	thread->parent = proc;
+
+	/* Insert the process and the thread. */
+	cpu_spinlock_acquire(&global_scheduler_lock);
+	LIST_INSERT_HEAD(&processes, proc, pointers);
+	insert_thread(proc, thread);
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	return pid;
+}
+
+/* Insert the thread into the scheduler, making it runnable. Transfers ownership of the thread
+   object. */
+tid_t schedule_thread(pid_t pid, struct thread *thread)
+{
+	tid_t tid;
+	struct proc *proc;
+
+	/* Assign a TID. */
+	tid = atomic_fetch_add(&next_tid, 1);
+	thread->tid = tid;
+
+	/* Get the process by PID and insert the thread. */
+	proc = sheduler_get_proc(pid);
+
+	if (proc == NULL)
+		kpanic("schedule_thread(): process does not exist");
+
+	thread->parent = proc;
+
+	insert_thread(proc, thread);
+
+	sheduler_put_proc(proc);
+
+	return tid;
+}
+
+/* kernel/thread.h */
 
 /* Forces the current thread to be rescheduled. */
 void thread_yield(void)

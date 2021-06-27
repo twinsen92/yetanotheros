@@ -66,16 +66,16 @@ static void kthread_3(__unused void *arg)
 		kdprintf("D");
 		thread_mutex_release(&lock);
 		thread_sleep(10000);
-		thread_create(PID_KERNEL, kthread_3, NULL, "kthread_3 copy");
+		schedule_kernel_thread(kthread_3, NULL, "kthread_3 copy");
 	}
 }
 
 noreturn kalloc_test_main(void)
 {
 	thread_mutex_create(&lock);
-	thread_create(PID_KERNEL, kthread_1, NULL, "kthread_1");
-	thread_create(PID_KERNEL, kthread_2, NULL, "kthread_2");
-	thread_create(PID_KERNEL, kthread_3, NULL, "kthread_3");
+	schedule_kernel_thread(kthread_1, NULL, "kthread_1");
+	schedule_kernel_thread(kthread_2, NULL, "kthread_2");
+	schedule_kernel_thread(kthread_3, NULL, "kthread_3");
 
 	for (int i = 0; i < 100; i++)
 	{

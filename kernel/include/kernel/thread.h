@@ -86,4 +86,19 @@ void _thread_cond_create(struct thread_cond *cond, const char *file, unsigned in
 void thread_cond_wait(struct thread_cond *cond, struct thread_mutex *mutex);
 void thread_cond_notify(struct thread_cond *cond);
 
+/* Creates a kernel thread. */
+struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *name);
+
+/* Frees a thread object. */
+void thread_free(struct thread *thread);
+
+/* Forces the current thread to be rescheduled. */
+void thread_yield(void);
+
+/* Exits the current thread. */
+noreturn thread_exit(void);
+
+/* Puts the current thread to sleep for a given number of milliseconds. */
+void thread_sleep(unsigned int milliseconds);
+
 #endif

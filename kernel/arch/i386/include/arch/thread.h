@@ -35,13 +35,11 @@ struct arch_thread
 
 /* Builds an empty thread object. This has only one purpose - to create the first kernel thread
    on the CPU. */
-void x86_thread_construct_empty(struct thread *thread, struct proc *proc, const char *name,
-	uint16_t cs, uint16_t ds);
+void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_t cs, uint16_t ds);
 
 /* Builds a kernel thread object. */
-void x86_thread_construct_kthread(struct thread *thread, struct proc *proc,
-	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
-	void *cookie, bool int_enabled);
+void x86_thread_construct_kthread(struct thread *thread, const char *name, vaddr_t stack,
+	size_t stack_size, void (*tentry)(void), void (*entry)(void *), void *cookie, bool int_enabled);
 
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */

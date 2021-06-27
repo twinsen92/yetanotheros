@@ -7,11 +7,12 @@
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
+#include <arch/scheduler.h>
 #include <arch/thread.h>
 #include <arch/cpu/selectors.h>
 
 uint32_t struct_x86_thread_offsetof_esp = offsetof(struct arch_thread, esp);
-static atomic_uint current_tid = 1;
+static atomic_uint current_thread_no = 1;
 
 #ifdef KERNEL_DEBUG
 #define MAX_THREADS 128
@@ -33,18 +34,17 @@ static void set_name(struct thread *thread, const char *name)
 
 /* Builds an empty x86_thread object. This has only one purpose - to create the first kernel thread
    on the CPU. */
-void x86_thread_construct_empty(struct thread *thread, struct proc *proc, const char *name,
-	uint16_t cs, uint16_t ds)
+void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_t cs, uint16_t ds)
 {
 	/* We cast pointers here. Make sure we're not in the wrong. */
 	kassert(sizeof(uint32_t) == sizeof(vaddr_t));
 
 	set_name(thread, name);
-	thread->tid = atomic_fetch_add(&current_tid, 1);
 
 #ifdef KERNEL_DEBUG
-	if (thread->tid < MAX_THREADS)
-		debug_x86_threads[thread->tid] = thread;
+	uint thread_no = atomic_fetch_add(&current_thread_no, 1);
+	if (thread_no < MAX_THREADS)
+		debug_x86_threads[thread_no] = thread;
 #endif
 
 	thread->state = THREAD_NEW;
@@ -55,18 +55,16 @@ void x86_thread_construct_empty(struct thread *thread, struct proc *proc, const 
 	/* Set the context. */
 	thread->arch->cs = cs;
 	thread->arch->ds = ds;
-	thread->parent = proc;
 }
 
 /* Builds a kernel x86_thread object. */
-void x86_thread_construct_kthread(struct thread *thread, struct proc *proc,
-	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
-	void *cookie, bool int_enabled)
+void x86_thread_construct_kthread(struct thread *thread, const char *name, vaddr_t stack,
+	size_t stack_size, void (*tentry)(void), void (*entry)(void *), void *cookie, bool int_enabled)
 {
 	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
 
-	x86_thread_construct_empty(thread, proc, name, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	x86_thread_construct_empty(thread, name, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
 
 	thread->arch->tentry = tentry;
 	thread->entry = entry;
@@ -114,4 +112,28 @@ void x86_thread_construct_kthread(struct thread *thread, struct proc *proc,
 
 	switch_frame->ebp = thread->arch->ebp;
 	switch_frame->eip = (uint32_t)isr_exit;
+}
+
+/* Creates a kernel thread. */
+struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *name)
+{
+	struct thread *thread;
+	vaddr_t stack;
+
+	stack = kalloc(HEAP_NORMAL, 16, 4096);
+	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
+	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
+	x86_thread_construct_kthread(thread, name, stack, 4096, &thread_entry, entry, cookie, true);
+
+	return thread;
+}
+
+/* Frees a thread object. */
+void thread_free(struct thread *thread)
+{
+	kfree(thread->arch->stack);
+	if (thread->arch->stack0)
+		kfree(thread->arch->stack0);
+	kfree(thread->arch);
+	kfree(thread);
 }

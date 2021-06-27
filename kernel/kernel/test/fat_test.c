@@ -95,11 +95,11 @@ static void competing_thread_main(void *cookie)
 
 noreturn fat_test_main(struct vfs_super *test)
 {
-	thread_create(PID_KERNEL, competing_thread_main, "A", "FAT test A");
-	thread_create(PID_KERNEL, competing_thread_main, "B", "FAT test B");
-	thread_create(PID_KERNEL, competing_thread_main, "C", "FAT test C");
-	thread_create(PID_KERNEL, competing_thread_main, "D", "FAT test D");
-	thread_create(PID_KERNEL, competing_thread_main, "E", "FAT test E");
+	schedule_kernel_thread(competing_thread_main, "A", "FAT test A");
+	schedule_kernel_thread(competing_thread_main, "B", "FAT test B");
+	schedule_kernel_thread(competing_thread_main, "C", "FAT test C");
+	schedule_kernel_thread(competing_thread_main, "D", "FAT test D");
+	schedule_kernel_thread(competing_thread_main, "E", "FAT test E");
 
 	dump_tree_main(test);
 

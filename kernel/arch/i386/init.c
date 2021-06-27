@@ -69,7 +69,7 @@ noreturn generic_x86_init(void)
 	init_ioapics();
 	init_serial();
 
-	thread_create(PID_KERNEL, early_kernel_main, NULL, "kernel_main");
+	schedule_kernel_thread(early_kernel_main, NULL, "kernel_main");
 
 	/* The kernel has been initialized now. */
 	yaos2_initialized = 1;
