@@ -2,6 +2,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
+#include <kernel/scheduler.h>
 #include <kernel/thread.h>
 #include <arch/cpu.h>
 #include <arch/scheduler.h>
@@ -24,19 +25,19 @@ void _thread_mutex_create(struct thread_mutex *mutex, const char *file, unsigned
 
 static inline bool unsafe_mutex_held(struct thread_mutex *mutex)
 {
-	struct x86_thread *thread;
+	struct thread *thread;
 
 	thread = get_current_thread();
 
 	if (thread == NULL)
 		kpanic("unsafe_mutex_held(): no thread running");
 
-	return mutex->locked && (mutex->tid == thread->noarch.tid);
+	return mutex->locked && (mutex->tid == thread->tid);
 }
 
 static inline void unsafe_mutex_acquire(struct thread_mutex *mutex)
 {
-	struct x86_thread *thread;
+	struct thread *thread;
 
 	thread = get_current_thread();
 
@@ -52,7 +53,7 @@ static inline void unsafe_mutex_acquire(struct thread_mutex *mutex)
 		sched_thread_wait(&(mutex->wait_cond), &(mutex->spinlock));
 
 	mutex->locked = true;
-	mutex->tid = thread->noarch.tid;
+	mutex->tid = thread->tid;
 
 #ifdef KERNEL_DEBUG
 	debug_fill_call_stack(&(mutex->lock_call_stack));

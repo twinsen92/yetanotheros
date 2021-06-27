@@ -1,18 +1,16 @@
-/* thread.h - x86 threading structures and constructors */
+/* arch/thread.h - x86 threading structures and constructors */
 #ifndef ARCH_I386_THREAD_H
 #define ARCH_I386_THREAD_H
 
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
-#include <kernel/queue.h>
+#include <kernel/proc.h>
 #include <kernel/thread.h>
 
 /* Size of the kernel stack if one has to be allocated. */
 #define KERNEL_STACK_SIZE 4096
 
-struct x86_proc;
-
-struct x86_thread
+struct arch_thread
 {
 	uint16_t cs; /* Code selector. */
 	uint16_t ds; /* Data selector. */
@@ -33,25 +31,15 @@ struct x86_thread
 	int cli_stack; /* Number of cli push operations. */
 
 	void (*tentry)(void); /* Entry point of the thread. This is what IRET will take the CPU to. */
-	void (*entry)(void *); /* Entry point the scheduler will call. */
-	void *cookie; /* The scheduler will pass this cookie to the entry point. */
-
-	struct x86_proc *parent; /* Parent process */
-	struct thread noarch; /* Arch-independent structure. */
-
-	LIST_ENTRY(x86_thread) lptrs;
-	STAILQ_ENTRY(x86_thread) sqptrs;
 };
 
-LIST_HEAD(x86_thread_list, x86_thread);
-
-/* Builds an empty x86_thread object. This has only one purpose - to create the first kernel thread
+/* Builds an empty thread object. This has only one purpose - to create the first kernel thread
    on the CPU. */
-void x86_thread_construct_empty(struct x86_thread *thread, struct x86_proc *proc, const char *name,
+void x86_thread_construct_empty(struct thread *thread, struct proc *proc, const char *name,
 	uint16_t cs, uint16_t ds);
 
-/* Builds a kernel x86_thread object. */
-void x86_thread_construct_kthread(struct x86_thread *thread, struct x86_proc *proc,
+/* Builds a kernel thread object. */
+void x86_thread_construct_kthread(struct thread *thread, struct proc *proc,
 	const char *name, vaddr_t stack, size_t stack_size, void (*tentry)(void), void (*entry)(void *),
 	void *cookie, bool int_enabled);
 
@@ -67,6 +55,6 @@ packed_struct x86_switch_frame
 };
 
 /* Switches threads by switching stack pointers. */
-void x86_thread_switch(struct x86_thread *current, struct x86_thread *new);
+void x86_thread_switch(struct arch_thread *current, struct arch_thread *new);
 
 #endif

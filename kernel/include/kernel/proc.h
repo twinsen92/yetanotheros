@@ -1,6 +1,9 @@
-/* proc.h - arch-independent process structure */
+/* kernel/proc.h - arch-independent process structure */
 #ifndef _KERNEL_PROC_H
 #define _KERNEL_PROC_H
+
+#include <kernel/queue.h>
+#include <kernel/thread.h>
 
 #define PID_KERNEL 0
 
@@ -16,6 +19,14 @@ struct proc
 	pid_t pid;
 	int state;
 	char name[32];
+
+	struct arch_proc *arch;
+
+	struct thread_list threads; /* Thread list. */
+
+	LIST_ENTRY(proc) pointers;
 };
+
+LIST_HEAD(proc_list, proc);
 
 #endif

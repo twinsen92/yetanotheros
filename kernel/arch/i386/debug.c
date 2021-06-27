@@ -130,15 +130,15 @@ static void get_stack_info(void **top, void **bottom)
 		return;
 	}
 
-	if (cpu->thread && cpu->thread->stack0)
+	if (cpu->thread && cpu->thread->arch->stack0)
 	{
-		*top = cpu->thread->stack0;
-		*bottom = cpu->thread->stack0 + cpu->thread->stack0_size;
+		*top = cpu->thread->arch->stack0;
+		*bottom = cpu->thread->arch->stack0 + cpu->thread->arch->stack0_size;
 	}
-	else if (cpu->thread && cpu->thread->stack)
+	else if (cpu->thread && cpu->thread->arch->stack)
 	{
-		*top = cpu->thread->stack;
-		*bottom = cpu->thread->stack + cpu->thread->stack_size;
+		*top = cpu->thread->arch->stack;
+		*bottom = cpu->thread->arch->stack + cpu->thread->arch->stack_size;
 	}
 	else
 	{

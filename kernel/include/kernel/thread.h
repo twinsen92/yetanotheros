@@ -1,10 +1,11 @@
-/* thread.h - arch-independent threading structure */
+/* kernel/thread.h - arch-independent threading structure */
 #ifndef _KERNEL_THREAD_H
 #define _KERNEL_THREAD_H
 
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
+#include <kernel/queue.h>
 #include <kernel/ticks.h>
 
 #define TID_INVALID 0
@@ -18,7 +19,9 @@
 #define THREAD_EXITED		6 /* Thread has exited. */
 
 typedef unsigned int tid_t;
-struct thread_mutex;
+
+struct proc; /* Can't include proc.h due to it including thread.h */
+struct arch_thread;
 
 struct thread
 {
@@ -28,7 +31,19 @@ struct thread
 	ticks_t sleep_until; /* Sleep end tick, if state == THREAD_SLEEPING. */
 	struct thread_cond *cond; /* Condition this thread is waiting on, if state == THREAD_BLOCKED. */
 	char name[32]; /* Name of the thread. */
+
+	void (*entry)(void *); /* Entry point the scheduler will call. */
+	void *cookie; /* The scheduler will pass this cookie to the entry point. */
+
+	struct proc *parent; /* Parent process */
+
+	struct arch_thread *arch; /* Arch-dependent structure. */
+
+	LIST_ENTRY(thread) lptrs;
+	STAILQ_ENTRY(thread) sqptrs;
 };
+
+LIST_HEAD(thread_list, thread);
 
 /* thread_cond - a preemtible condition that puts waiting threads into THREAD_BLOCKED state */
 struct thread_cond

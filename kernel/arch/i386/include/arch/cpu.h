@@ -3,6 +3,7 @@
 #define ARCH_I386_CPU_H
 
 #include <kernel/cdefs.h>
+#include <kernel/thread.h>
 #include <arch/interrupts.h>
 #include <arch/proc.h>
 #include <arch/thread.h>
@@ -38,9 +39,10 @@ struct x86_cpu
 
 	/* Scheduler fields. */
 	int preempt_disabled;
-	struct x86_thread scheduler_thread;
-	struct x86_thread *scheduler;
-	struct x86_thread *thread;
+	struct thread scheduler_thread;
+	struct arch_thread scheduler_arch_thread;
+	struct thread *scheduler;
+	struct thread *thread;
 };
 
 extern lapic_id_t boot_lapic_id;

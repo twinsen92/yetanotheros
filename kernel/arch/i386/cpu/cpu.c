@@ -49,6 +49,8 @@ void cpu_add(lapic_id_t lapic_id)
 	if (initial_cpu.int_enabled || initial_cpu.cli_stack > 0 || initial_cpu.preempt_disabled > 0)
 		kpanic("cpu_add(): initial CPU has state information");
 
+	kmemset(&cpus[nof_cpus], 0, sizeof(struct x86_cpu));
+
 	cpus[nof_cpus].magic = X86_CPU_MAGIC;
 	cpus[nof_cpus].num = nof_cpus;
 	cpus[nof_cpus].active = false;
@@ -64,9 +66,6 @@ void cpu_add(lapic_id_t lapic_id)
 		kpanic("init_cpu(): CPU does not support CPUID");
 
 	cpus[nof_cpus].preempt_disabled = 0;
-	kmemset(&(cpus[nof_cpus].scheduler_thread), 0, sizeof(cpus[nof_cpus].scheduler_thread));
-	cpus[nof_cpus].scheduler = NULL;
-	cpus[nof_cpus].thread = NULL;
 
 	nof_cpus++;
 }

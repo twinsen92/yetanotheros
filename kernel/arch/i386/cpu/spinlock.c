@@ -89,7 +89,7 @@ void cpu_spinlock_acquire(struct cpu_spinlock *spinlock)
 
 #ifdef KERNEL_DEBUG
 	if (cpu->thread)
-		spinlock->tid = cpu->thread->noarch.tid;
+		spinlock->tid = cpu->thread->tid;
 	/* Copy the current call stack into the spinlock object. */
 	debug_fill_call_stack(&(spinlock->lock_call_stack));
 #endif

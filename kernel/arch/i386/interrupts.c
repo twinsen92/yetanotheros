@@ -34,7 +34,7 @@ void generic_interrupt_handler(struct isr_frame *frame)
 		if (cpu->preempt_disabled)
 			return;
 
-		if (cpu->thread && cpu->thread->noarch.state == THREAD_RUNNING)
+		if (cpu->thread && cpu->thread->state == THREAD_RUNNING)
 			thread_yield();
 	}
 }
