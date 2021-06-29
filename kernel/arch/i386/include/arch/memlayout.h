@@ -173,7 +173,7 @@ struct vm_region
 		km_paddr(KM_VIRT_LOW_BASE),																\
 		km_paddr(KM_VIRT_LOW_END) - km_paddr(KM_VIRT_LOW_BASE),									\
 		VM_BIT_STATIC,																			\
-		PAGE_BIT_RW | PAGE_BIT_GLOBAL															\
+		PAGE_BIT_RW																				\
 	};																							\
 	/* Kernel's read-only region. Contains kernel's code and read-only data. */					\
 	map[1] = (struct vm_region) {																\
@@ -249,7 +249,11 @@ struct vm_region
 #define VM_DYNAMIC_REGION 6
 
 /* Region flag bits. */
+
+/* Causes the region to be mapped one-to-one to physical pages. */
 #define VM_BIT_STATIC		0x01
+
+/* Denotes regions that contain the kernel executable. */
 #define VM_BIT_EXECUTABLE	0x02
 
 /* The map itself, defined in early_paging.c */

@@ -11,7 +11,7 @@
 #include <arch/thread.h>
 #include <arch/cpu/selectors.h>
 
-uint32_t struct_x86_thread_offsetof_esp = offsetof(struct arch_thread, esp);
+uint32_t struct_x86_thread_offsetof_esp0 = offsetof(struct arch_thread, esp0);
 static atomic_uint current_thread_no = 1;
 
 #ifdef KERNEL_DEBUG
@@ -58,13 +58,23 @@ void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_
 }
 
 /* Builds a kernel x86_thread object. */
-void x86_thread_construct_kthread(struct thread *thread, const char *name, vaddr_t stack,
-	size_t stack_size, void (*tentry)(void), void (*entry)(void *), void *cookie, bool int_enabled)
+void x86_thread_construct_thread(struct thread *thread,
+	const char *name,
+	vaddr_t stack0,
+	size_t stack0_size,
+	vaddr_t stack,
+	size_t stack_size,
+	void (*tentry)(void),
+	void (*entry)(void *),
+	void *cookie,
+	bool int_enabled,
+	uint16_t cs,
+	uint16_t ds)
 {
 	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
 
-	x86_thread_construct_empty(thread, name, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	x86_thread_construct_empty(thread, name, cs, ds);
 
 	thread->arch->tentry = tentry;
 	thread->entry = entry;
@@ -72,45 +82,62 @@ void x86_thread_construct_kthread(struct thread *thread, const char *name, vaddr
 
 	/* Make sure the stack is aligned to 16 bytes. */
 	kassert(((uintptr_t)stack) % 16 == 0);
+	kassert(((uintptr_t)stack0) % 16 == 0);
 
-	thread->arch->stack = stack;
-	thread->arch->stack_size = stack_size;
-	thread->arch->ebp = (uint32_t)thread->arch->stack + stack_size;
-	thread->arch->esp = thread->arch->ebp;
+	thread->arch->stack = NULL;
+	thread->arch->stack_size = 0;
+	thread->arch->ebp = 0;
 
-	/* Don't need to set up a ring 0 stack for a kernel thread. */
-	thread->arch->stack0 = NULL;
-	thread->arch->stack0_size = 0;
-	thread->arch->ebp0 = 0;
+	/* We need an N ring stack if we're creating a user thread. */
+	if (cs == USER_CODE_SELECTOR)
+	{
+		kassert(stack);
+
+		thread->arch->stack = stack;
+		thread->arch->stack_size = stack_size;
+		thread->arch->ebp = (uint32_t)thread->arch->stack + stack_size;
+	}
+
+	thread->arch->stack0 = stack0;
+	thread->arch->stack0_size = stack0_size;
+	thread->arch->ebp0 = (uint32_t)thread->arch->stack0 + stack0_size;
+	thread->arch->esp0 = thread->arch->ebp0;
 
 	thread->arch->int_enabled = int_enabled;
 	thread->arch->cli_stack = 0;
 
 	/* 2. We'll be switching in an interrupt handler. We need to imitate the stack during
 	   an interrupt, so that iret works. */
-	thread->arch->esp = thread->arch->esp - sizeof(struct isr_frame);
-	isr_frame = (struct isr_frame *)thread->arch->esp;
+	thread->arch->esp0 = thread->arch->esp0 - sizeof(struct isr_frame);
+	isr_frame = (struct isr_frame *)thread->arch->esp0;
 
 	/* isr_exit stack */
-	isr_frame->ebp = thread->arch->ebp;
-	isr_frame->ds = KERNEL_DATA_SELECTOR;
-	isr_frame->es = KERNEL_DATA_SELECTOR;
+	isr_frame->ebp = thread->arch->ebp0;
+	isr_frame->ds = ds;
+	isr_frame->es = ds;
 	isr_frame->fs = 0;
 	isr_frame->gs = 0;
 
-	/* IRET stack. Since we're IRETing to the same ring, no need to provide SS:ESP */
+	/* IRET stack. When returning to a different ring, we have to also specify SS:ESP. */
 	isr_frame->ss = 0;
 	isr_frame->esp = 0;
+
+	if (cs == USER_CODE_SELECTOR)
+	{
+		isr_frame->ss = ds;
+		isr_frame->esp = thread->arch->ebp;
+	}
+
 	isr_frame->eflags = int_enabled ? EFLAGS_IF : 0;
-	isr_frame->cs = KERNEL_CODE_SELECTOR;
+	isr_frame->cs = cs;
 	isr_frame->eip = (uint32_t)tentry;
 
 	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
 	   the stack, but omitting the parameters. Make ret take us to isr_exit. */
-	thread->arch->esp = thread->arch->esp - sizeof(struct x86_switch_frame);
-	switch_frame = (struct x86_switch_frame *)thread->arch->esp;
+	thread->arch->esp0 = thread->arch->esp0 - sizeof(struct x86_switch_frame);
+	switch_frame = (struct x86_switch_frame *)thread->arch->esp0;
 
-	switch_frame->ebp = thread->arch->ebp;
+	switch_frame->ebp = thread->arch->ebp0;
 	switch_frame->eip = (uint32_t)isr_exit;
 }
 
@@ -123,7 +150,23 @@ struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *n
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
-	x86_thread_construct_kthread(thread, name, stack, 4096, &thread_entry, entry, cookie, true);
+	x86_thread_construct_thread(thread, name, stack, 4096, NULL, 0, &thread_entry, entry, cookie,
+		true, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+
+	return thread;
+}
+
+struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_size,
+	const char *name)
+{
+	struct thread *thread;
+	vaddr_t stack0;
+
+	stack0 = kalloc(HEAP_NORMAL, 16, 4096);
+	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
+	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
+	x86_thread_construct_thread(thread, name, stack0, 4096, stack, stack_size, tentry, NULL, NULL,
+		true, USER_CODE_SELECTOR, USER_DATA_SELECTOR);
 
 	return thread;
 }

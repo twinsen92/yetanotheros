@@ -6,6 +6,7 @@
 #include <kernel/vfs.h>
 #include <kernel/devices/pci.h>
 #include <kernel/fs/fat.h>
+#include <kernel/exec/elf.h>
 
 /* TODO: Make driver installation more automatic. */
 void ata_gen_install(void);
@@ -32,5 +33,8 @@ noreturn kernel_main(void)
 	vfs_init(root_fs);
 
 	//kalloc_test_main();
-	fat_test_main(root_fs);
+	//fat_test_main(root_fs);
+	exec_user_elf_program("/usr/bin/hello");
+
+	while(1);
 }

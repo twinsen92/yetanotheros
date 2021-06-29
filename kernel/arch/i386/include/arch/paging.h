@@ -20,6 +20,8 @@ extern pte_t *const current_page_tables;
 extern pde_t *const kernel_pd;
 extern pte_t *const kernel_page_tables;
 
+#define phys_kernel_pd km_paddr(kernel_pd)
+
 /* Dimensions of paging structures. */
 
 #define PD_LENGTH (PAGE_SIZE / sizeof(pde_t))
@@ -46,7 +48,7 @@ static inline bool is_using_kernel_page_tables(void)
 {
 	paddr_t pd;
 	asm volatile ("movl %%cr3, %0" : "=r" (pd));
-	return pd == km_paddr(kernel_pd);
+	return pd == phys_kernel_pd;
 }
 
 /*
@@ -74,6 +76,12 @@ void vmwrite(paddr_t pd, vaddr_t v, const void *buf, size_t num);
 
 /* Initializes the interface of paging.h */
 void init_paging(void);
+
+/* Lock kernel paging structures. This ensures they do not change. */
+void kp_lock(void);
+
+/* Unlock kernel paging structures. */
+void kp_unlock(void);
 
 /* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
 bool kp_lock_held(void);

@@ -21,6 +21,18 @@ void init_paging(void)
 	init_paging_ipi();
 }
 
+/* Lock kernel paging structures. This ensures they do not change. */
+void kp_lock(void)
+{
+	cpu_spinlock_acquire(&kp_spinlock);
+}
+
+/* Unlock kernel paging structures. */
+void kp_unlock(void)
+{
+	cpu_spinlock_release(&kp_spinlock);
+}
+
 /* Check if we're holding the kernel page table's lock. This is used to avoid dead-locks. */
 bool kp_lock_held(void)
 {
@@ -30,7 +42,6 @@ bool kp_lock_held(void)
 /* Map one physical page to one virtual page in kernel page tables. */
 void kp_map(vaddr_t v, paddr_t p)
 {
-	paddr_t p_kernel_pd = vm_map_rev_walk(kernel_pd, true);
 	paddr_t prev_cr3;
 	pflags_t flags = vm_get_pflags(v);
 
@@ -39,13 +50,13 @@ void kp_map(vaddr_t v, paddr_t p)
 	/* We need to use the kernel page tables, because we might call palloc to allocate a page
 	   table. Also we might need to be able to access pages that might be beneath user's virtual
 	   memory space. */
-	prev_cr3 = cpu_set_cr3(p_kernel_pd);
+	prev_cr3 = cpu_set_cr3(phys_kernel_pd);
 
-	paging_map(p_kernel_pd, v, p, flags);
+	paging_map(phys_kernel_pd, v, p, flags);
 	/* Notify other CPUs of these changes. */
-	paging_propagate_changes(p_kernel_pd, v, flags & PAGE_BIT_GLOBAL);
+	paging_propagate_changes(phys_kernel_pd, v, flags & PAGE_BIT_GLOBAL);
 	/* If we think we're not going to switch CR3, we should do INVLPG */
-	if (prev_cr3 == p_kernel_pd)
+	if (prev_cr3 == phys_kernel_pd)
 		asm_invlpg(v);
 	cpu_set_cr3(prev_cr3);
 

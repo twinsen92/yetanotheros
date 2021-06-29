@@ -2,6 +2,7 @@
 #ifndef _KERNEL_THREAD_H
 #define _KERNEL_THREAD_H
 
+#include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
@@ -88,6 +89,9 @@ void thread_cond_notify(struct thread_cond *cond);
 
 /* Creates a kernel thread. */
 struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *name);
+
+struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_size,
+	const char *name);
 
 /* Frees a thread object. */
 void thread_free(struct thread *thread);

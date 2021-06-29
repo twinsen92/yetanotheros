@@ -55,47 +55,12 @@ void init_gdt(void)
 		: "eax"
 	);
 
-	/* Let's now fill out the TSS and load it. */
+	/* Fill the TSS with zeroes. */
 	memset_volatile(&(cpu->tss), 0, sizeof(struct tss));
 
-	asm volatile (
-		"movl %0, %%ebx\n"
-		/* Fill out ss0:esp0 */
-		"movl %%esp, %%eax\n"
-		"movl %%eax, 4(%%ebx)\n"
-		"movw %%ss, %%ax\n"
-		"movw %%ax, 8(%%ebx)\n"
-		/* Fill out iopb */
-		"movw %2, %%ax\n"
-		"movw %%ax, 102(%%ebx)\n"
-		/* Fill out cr3 */
-		"movl %%cr3, %%eax\n"
-		"movl %%eax, 28(%%ebx)\n"
-		/* Fill out eip */
-		"leal _with_kernel_tss, %%eax\n"
-		"movl %%eax, 32(%%ebx)\n"
-		/* Fill out cs, ds, es, fs, gs, ss */
-		"movw %%cs, %%ax\n"
-		"movw %%ax, 76(%%ebx)\n"
-		"movw %%ds, %%ax\n"
-		"movw %%ax, 84(%%ebx)\n"
-		"movw %%es, %%ax\n"
-		"movw %%ax, 72(%%ebx)\n"
-		"movw %%fs, %%ax\n"
-		"movw %%ax, 88(%%ebx)\n"
-		"movw %%gs, %%ax\n"
-		"movw %%ax, 92(%%ebx)\n"
-		"movw %%ss, %%ax\n"
-		"movw %%ax, 80(%%ebx)\n"
-		/* Load the TSS */
-		"movl %1, %%eax\n"
-		//"cli; 1: hlt; jmp 1b\n"
-		"ltr %%ax\n"
-		"_with_kernel_tss:"
-		:
-		: "r" (&(cpu->tss)), "i" (KERNEL_TSS_SELECTOR), "i" (sizeof(struct tss))
-		: "eax", "ax", "ebx", "memory"
-	);
+	/* Set the address of the IO permission bitmap to the end of the segment. This disable port
+	   operations in user mode. */
+	cpu->tss.iopb = sizeof(struct tss);
 
 	pop_no_interrupts();
 }

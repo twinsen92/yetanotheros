@@ -42,6 +42,9 @@ void init_idt(void);
 /* Loads the IDT pointer into the current CPU. */
 void load_idt(void);
 
+/* Modifies an entry in the IDT. */
+void idt_modify_entry(int_no_t int_no, uint32_t flags);
+
 /* Sets an entry in the IDT. */
 void idt_set_entry(int_no_t int_no, uint32_t offset, uint16_t selector, uint32_t flags);
 

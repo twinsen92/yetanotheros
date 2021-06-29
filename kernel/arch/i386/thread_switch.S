@@ -17,8 +17,8 @@ x86_thread_switch:
 	pushl	%edi
 
 	# Get offsetof (struct thread, stack).
-.global struct_x86_thread_offsetof_esp
-	mov struct_x86_thread_offsetof_esp, %edx
+.global struct_x86_thread_offsetof_esp0
+	mov struct_x86_thread_offsetof_esp0, %edx
 
 	# Save current stack pointer to old thread's stack, if any.
 	movl 20(%esp), %eax

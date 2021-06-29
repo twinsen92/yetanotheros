@@ -39,7 +39,10 @@ void exec_user_elf_program(const char *path)
 	struct elf_32_section_header section_32;
 	int i;
 	struct proc *proc;
-	vaddr_t v, vto;
+	vaddr_t vbreak = NULL, v, vto;
+	vaddr_t stack;
+	size_t stack_size;
+	struct thread *thread;
 
 	/* Open the file and make sure it is open. */
 	f = vfs_open(path);
@@ -83,6 +86,10 @@ void exec_user_elf_program(const char *path)
 			v += PAGE_SIZE;
 		}
 
+		/* Move the program break address. */
+		if (vto > vbreak)
+			vbreak = vto;
+
 		/* TODO: Actually use the flags field. */
 		/* TODO: What about the seg_align field? What is it used for? */
 	}
@@ -96,7 +103,15 @@ void exec_user_elf_program(const char *path)
 		handle_section(proc, f, &section_32);
 	}
 
-	/* TODO: Create a user thread and schedule it. */
+	/* Allocate a stack for the program right after its executable. */
+	proc_vmreserve(proc, vbreak, VM_USER | VM_WRITE);
+	stack = vbreak;
+	stack_size = PAGE_SIZE;
+	vbreak += PAGE_SIZE;
+
+	/* Create a user thread and schedule it. */
+	thread = uthread_create((void (*)(void))header_32.pe_pos, stack, stack_size, "elf thread");
+	schedule_proc(proc, thread);
 
 	/* Close the file and cleanup. */
 	vfs_close(f);

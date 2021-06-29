@@ -42,8 +42,7 @@ OBJS=\
 $(FREEOBJS) \
 $(HOSTEDOBJS) \
 
-#BINARIES=libc.a # Not ready for libc yet.
-BINARIES=
+BINARIES=libc.a
 
 .PHONY: all clean install install-headers install-libs
 .SUFFIXES: .o .c .S
@@ -72,6 +71,6 @@ install-headers:
 
 install-libs: $(BINARIES)
 	mkdir -p $(DESTDIR)$(LIBDIR)
-	#cp $(BINARIES) $(DESTDIR)$(LIBDIR)
+	cp $(BINARIES) $(DESTDIR)$(LIBDIR)
 
 -include $(OBJS:.o=.d)

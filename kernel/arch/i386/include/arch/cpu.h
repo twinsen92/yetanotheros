@@ -79,6 +79,9 @@ static inline paddr_t cpu_get_cr3(void)
 	return cr3;
 }
 
+/* Setup TSS for execution of the given thread on the CPU. */
+void cpu_setup_tss(struct x86_cpu *cpu, struct thread *thread);
+
 /* A cli that does not update CPU object */
 #define cpu_force_cli() asm volatile("cli" : : : "memory")
 

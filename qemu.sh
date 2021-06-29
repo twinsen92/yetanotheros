@@ -8,6 +8,6 @@ qemu-system-$(./target-triplet-to-arch.sh $HOST) \
 	-monitor stdio \
 	-smp 2 \
 	-D qemu.log \
+#	-d int \
 #	-boot d \ # Boot from CD-ROM
 #	-cdrom yaos2_multiboot.iso \
-#	-d int \

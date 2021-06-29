@@ -48,6 +48,19 @@ paddr_t paging_alloc_dir(void)
 	vpd = ptranslate(pd);
 	kmemset(vpd, 0, PD_LENGTH * sizeof(pde_t));
 
+	/* Copy the global entries from the kernel page directory. The kernel page directory will always
+	   be up to date, because we set all entries to present, with some also being global. */
+
+	kp_lock();
+
+	for (uint i = 0; i < PD_LENGTH; i++)
+	{
+		if (kernel_pd[i] & PAGE_BIT_GLOBAL)
+			vpd[i] = kernel_pd[i];
+	}
+
+	kp_unlock();
+
 	return pd;
 }
 
@@ -71,7 +84,6 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pde_t *pde;
 	pte_t *pte;
 	paddr_t pt;
-	pte_t *vpt;
 
 	/* Potential deadlock because of our palloc() use. */
 	check_palloc_lock();
@@ -88,6 +100,10 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pde = translate_or_panic(pd);
 	pde = pde + pdi;
 
+	/* Make sure the we do not overwrite kernel page structures! */
+	if ((*pde) & PAGE_BIT_GLOBAL && pd != phys_kernel_pd)
+		kpanic("paging_map(): attempted to overwrite global kernel PD entries in non-kernel PD");
+
 	if (pde_get_paddr(*pde) == PHYS_NULL)
 	{
 		/* We assume page returned by palloc equals the size of a page table. */
@@ -95,8 +111,7 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 
 		/* Allocate the page table and clear it. */
 		pt = palloc();
-		vpt = ptranslate(pt);
-		kmemset(vpt, 0, PT_LENGTH * sizeof(pte_t));
+		kmemset(ptranslate(pt), 0, PT_LENGTH * sizeof(pte_t));
 
 		/* Write it to the page directory. */
 		*pde = pde_construct(pt, 0);
@@ -109,6 +124,8 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pte = pte + pti;
 
 	*pte = pte_construct(p, flags | PAGE_BIT_PRESENT);
+
+	/* TODO: Propagate changes to other CPUs here? */
 }
 
 /* Get the physical address of the virutal address v in page tables pd. */
@@ -129,6 +146,9 @@ paddr_t paging_get(paddr_t pd, vaddr_t v)
 	/* Translate the first level. */
 	pde = translate_or_panic(pd);
 	pde = pde + pdi;
+
+	if (pde_get_paddr(*pde) == PHYS_NULL)
+		return PHYS_NULL;
 
 	/* Translate the second level. */
 	pte = translate_or_panic(pde_get_paddr(*pde));

@@ -46,6 +46,7 @@ kernel/vfs/file.o \
 kernel/exclusive_buffer.o \
 kernel/kernel.o \
 kernel/printf.o \
+kernel/syscall.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

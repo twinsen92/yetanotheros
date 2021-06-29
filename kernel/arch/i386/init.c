@@ -4,6 +4,7 @@
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
+#include <kernel/syscall.h>
 #include <arch/cpu.h>
 #include <arch/heap.h>
 #include <arch/init.h>
@@ -56,6 +57,9 @@ noreturn generic_x86_init(void)
 
 	pic_disable();
 	init_global_scheduler();
+
+	/* Initialize the syscall subsystem. */
+	init_syscall();
 
 	/* Initialize the first LAPIC. */
 	load_idt();

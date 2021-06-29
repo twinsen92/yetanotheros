@@ -4,7 +4,6 @@
 #include <kernel/cpu.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
-#include <arch/memlayout.h>
 #include <arch/paging.h>
 #include <arch/cpu/apic.h>
 
@@ -18,9 +17,6 @@ static atomic_bool ipi_received;
 static void ipi_flush_tlb_handler(__unused struct isr_frame *frame)
 {
 	uint32_t cr3;
-	paddr_t phys_kernel_pd;
-
-	phys_kernel_pd = vm_map_rev_walk(kernel_pd, true);
 
 	preempt_disable();
 
@@ -28,11 +24,9 @@ static void ipi_flush_tlb_handler(__unused struct isr_frame *frame)
 
 	if (ipi_global && ipi_updated_pd == phys_kernel_pd && cr3 != phys_kernel_pd)
 	{
-		/* If kernel pages were modified with a global bit somehow, we need to switch to them and
-		   then go back to the page directory we were using before. That will propagate global
-		   pages. */
-		cpu_set_cr3(phys_kernel_pd);
-		cpu_set_cr3(cr3);
+		/* If kernel pages were modified with a global bit somehow, we need to do a TLB flush
+		   regardless. That will update the kernel part of our page tables. */
+		cpu_flush_tlb();
 	}
 	else if (ipi_updated_pd == cr3)
 	{

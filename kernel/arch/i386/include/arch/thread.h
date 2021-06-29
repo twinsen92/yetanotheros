@@ -16,13 +16,13 @@ struct arch_thread
 	uint16_t ds; /* Data selector. */
 
 	/* Ring N stack. */
-	uint32_t esp; /* Current stack pointer. */
 	uint32_t ebp; /* Bottom of the stack pointer. */
 	vaddr_t stack; /* Stack top pointer. */
 	size_t stack_size;
 
 	/* Ring 0 stack. */
 	uint32_t ebp0; /* Bottom of the kernel stack pointer. 0 if using kernel selectors. */
+	uint32_t esp0; /* Current ring 0 stack pointer. */
 	vaddr_t stack0; /* Kernel stack top pointer. NULL if using kernel selectors. */
 	size_t stack0_size;
 
@@ -37,9 +37,19 @@ struct arch_thread
    on the CPU. */
 void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_t cs, uint16_t ds);
 
-/* Builds a kernel thread object. */
-void x86_thread_construct_kthread(struct thread *thread, const char *name, vaddr_t stack,
-	size_t stack_size, void (*tentry)(void), void (*entry)(void *), void *cookie, bool int_enabled);
+/* Builds a thread object. */
+void x86_thread_construct_thread(struct thread *thread,
+	const char *name,
+	vaddr_t stack0,
+	size_t stack0_size,
+	vaddr_t stack,
+	size_t stack_size,
+	void (*tentry)(void),
+	void (*entry)(void *),
+	void *cookie,
+	bool int_enabled,
+	uint16_t cs,
+	uint16_t ds);
 
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */

@@ -98,6 +98,36 @@ static void map_region_object(const struct vm_region *region, bool early)
 	map_region(region->vbase, region->pbase, region->pbase + region->size, region->pflags, early);
 }
 
+static void mark(vaddr_t v, pflags_t pflags, bool early)
+{
+	int pdi;
+	pde_t *pde;
+
+	v = (vaddr_t)mask_to_page(v);
+
+	pdi = get_pd_index(v);
+
+	/* Make sure the PD entry points at our PT. */
+	pde = new_kernel_pd + pdi;
+	pde = enable(pde, early);
+
+	*pde |= pflags;
+}
+
+static void mark_region(vaddr_t vfrom, vaddr_t vto, pflags_t pflags, bool early)
+{
+	while (vfrom < vto)
+	{
+		mark(vfrom, pflags, early);
+		vfrom += PAGE_SIZE;
+	}
+}
+
+static void mark_region_object(const struct vm_region *region, pflags_t pflags, bool early)
+{
+	mark_region(region->vbase, region->vbase + region->size, region->pflags | pflags, early);
+}
+
 /* Adds a self-reference to the kernel page directory at a the kernel page directory entry pdi,
    with given flags. */
 static void add_self_ref(int pdi, uint32_t flags, bool early)
@@ -165,6 +195,17 @@ void early_init_kernel_paging(void)
 	{
 		if (pde_get_paddr(new_kernel_pd[i]) == PHYS_NULL)
 			new_kernel_pd[i] |= km_paddr(new_kernel_page_tables + (i * PT_LENGTH));
+	}
+
+	/* Apply the region the paging flags to all underlying directory entries. We also mark them as
+	   present, because each entry contains a valid physical address to a page table.
+
+	   This will basically make the kernel page directory constant for the whole time the system
+	   is up, which allows us to copy the global (kernel) entries ad-hoc to newly created user
+	   process' page directories.*/
+	for(int i = 0; i < VM_NOF_REGIONS; i++)
+	{
+		mark_region_object(&vm_map[i], PAGE_BIT_PRESENT, false);
 	}
 
 	/* Doesn't hurt to flush TLB... */

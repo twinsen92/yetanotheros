@@ -8,7 +8,6 @@
 #include <kernel/thread.h>
 #include <kernel/ticks.h>
 #include <arch/cpu.h>
-#include <arch/memlayout.h>
 #include <arch/paging.h>
 #include <arch/proc.h>
 #include <arch/thread.h>
@@ -39,7 +38,7 @@ void init_global_scheduler(void)
 
 	cpu_checkpoint_create(&scheduler_checkpoint);
 
-	_kernel_arch_process.pd = vm_map_rev_walk(kernel_pd, true);
+	_kernel_arch_process.pd = phys_kernel_pd;
 	kernel_process.arch = &_kernel_arch_process;
 	LIST_INIT(&(kernel_process.threads));
 	kernel_process.pid = PID_KERNEL;
@@ -87,9 +86,11 @@ static void destroy_thread(struct thread *thread)
 		/* We do not want to destroy the kernel process! */
 		kassert(proc != &kernel_process);
 		proc->state = PROC_DEFUNCT;
-	}
 
-	/* TODO: Free process' resources. */
+		/* Remove the process and free it. */
+		LIST_REMOVE(proc, pointers);
+		proc_free(proc);
+	}
 }
 
 static inline void store_interrupts(struct thread *thread, struct x86_cpu *cpu)
@@ -195,7 +196,8 @@ noreturn enter_scheduler(void)
 			/* Restore the thread's state of the interrupts. */
 			restore_interrupts(cpu->thread, cpu);
 
-			/* TODO: Reload TSS as well. */
+			/* Setup TSS for execution of the given thread on the CPU. */
+			cpu_setup_tss(cpu, thread);
 			cpu_set_cr3(proc->arch->pd);
 
 			thread->state = THREAD_RUNNING;
