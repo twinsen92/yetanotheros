@@ -247,8 +247,8 @@ static void reschedule(void)
 	x86_thread_switch(thread->arch, cpu->scheduler->arch);
 }
 
-/* Entry point for threads. */
-void thread_entry(void)
+/* Entry point for kernel threads. */
+void kthread_entry(void)
 {
 	/* We enter with the global scheduler lock. We have to release it for other schedulers to work. */
 	cpu_spinlock_release(&global_scheduler_lock);

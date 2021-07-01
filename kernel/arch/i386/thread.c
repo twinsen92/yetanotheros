@@ -150,7 +150,7 @@ struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *n
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
-	x86_thread_construct_thread(thread, name, stack, 4096, NULL, 0, &thread_entry, entry, cookie,
+	x86_thread_construct_thread(thread, name, stack, 4096, NULL, 0, &kthread_entry, entry, cookie,
 		true, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
 
 	return thread;
