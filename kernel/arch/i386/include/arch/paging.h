@@ -64,6 +64,9 @@ void paging_free_dir(paddr_t pd);
 /* Map physical page p to virtual address v using given flags for page tables in pd. */
 void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags);
 
+/* Get the entry of the virutal address v in page tables pd. */
+pte_t paging_get_entry(paddr_t pd, vaddr_t v);
+
 /* Get the physical address of the virutal address v in page tables pd. */
 paddr_t paging_get(paddr_t pd, vaddr_t v);
 

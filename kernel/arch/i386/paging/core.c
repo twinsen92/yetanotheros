@@ -65,16 +65,31 @@ paddr_t paging_alloc_dir(void)
 }
 
 /* Free a PD. */
-void paging_free_dir(__unused paddr_t pd)
+void paging_free_dir(paddr_t pd)
 {
+	pde_t *pde;
+	uint i;
+
 	/* Need to be using kernel pages. */
 	kassert(is_using_kernel_page_tables());
 
 	/* Potential deadlock because of our pfree() use. */
 	check_palloc_lock();
 
-	/* TODO: Implement */
-	kpanic("not implemented");
+	if (pd == phys_kernel_pd)
+		kpanic("paging_free_dir(): attempted to free kernel page directory");
+
+	/* Free present, non-global page tables. Those have been allocated for this page directory. */
+	pde = translate_or_panic(pd);
+
+	for (i = 0; i < PD_LENGTH; i++)
+	{
+		if (pde[i] & PAGE_BIT_PRESENT && (pde[i] & PAGE_BIT_GLOBAL) == 0)
+			pfree(pde_get_paddr(pde[i]));
+	}
+
+	/* Free the page directory itself. */
+	pfree(pd);
 }
 
 /* Map physical page p to virtual address v using given flags for page tables in pd. */
@@ -84,6 +99,9 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pde_t *pde;
 	pte_t *pte;
 	paddr_t pt;
+
+	if (flags & PAGE_BIT_GLOBAL && pd != phys_kernel_pd)
+		kpanic("paging_map(): attempted to use the global flag in non-kernel page directory");
 
 	/* Potential deadlock because of our palloc() use. */
 	check_palloc_lock();
@@ -128,8 +146,8 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	/* TODO: Propagate changes to other CPUs here? */
 }
 
-/* Get the physical address of the virutal address v in page tables pd. */
-paddr_t paging_get(paddr_t pd, vaddr_t v)
+/* Get the entry of the virutal address v in page tables pd. */
+pte_t paging_get_entry(paddr_t pd, vaddr_t v)
 {
 	int pdi, pti;
 	pde_t *pde;
@@ -155,7 +173,13 @@ paddr_t paging_get(paddr_t pd, vaddr_t v)
 	pte = pte + pti;
 
 	/* We can now read the page table. */
-	return pte_get_paddr(*pte);
+	return *pte;
+}
+
+/* Get the physical address of the virutal address v in page tables pd. */
+paddr_t paging_get(paddr_t pd, vaddr_t v)
+{
+	return pte_get_paddr(paging_get_entry(pd, v));
 }
 
 /* Write num number of bytes from buf into the virtual address v of page tables pd. */

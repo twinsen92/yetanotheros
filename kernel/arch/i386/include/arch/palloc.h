@@ -12,7 +12,10 @@ void init_palloc(void);
 void palloc_add_free_region(paddr_t from, paddr_t to);
 
 /* Get the size of the page returned by palloc() */
-uint32_t palloc_get_granularity(void);
+uint palloc_get_granularity(void);
+
+/* Get the size of the remaining (free) physical memory. */
+size_t palloc_get_remaining(void);
 
 /* Get the next free physical memory page or PHYS_NULL if none are available. */
 paddr_t palloc(void);

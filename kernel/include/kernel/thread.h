@@ -32,6 +32,7 @@ struct thread
 	ticks_t sleep_until; /* Sleep end tick, if state == THREAD_SLEEPING. */
 	struct thread_cond *cond; /* Condition this thread is waiting on, if state == THREAD_BLOCKED. */
 	char name[32]; /* Name of the thread. */
+	uint sched_count;
 
 	void (*entry)(void *); /* Entry point the scheduler will call. */
 	void *cookie; /* The scheduler will pass this cookie to the entry point. */

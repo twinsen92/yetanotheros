@@ -23,6 +23,7 @@ static bool initialized = false;
 static struct cpu_spinlock spinlock;
 static struct page *first_free_page;
 static const struct vm_region *vm_region;
+static uint remaining_pages = 0;
 
 /* Checks whether the given page is mappable in the palloc's virtual memory region. */
 static inline bool is_mappable(paddr_t p)
@@ -76,9 +77,21 @@ void palloc_add_free_region(paddr_t from, paddr_t to)
 }
 
 /* Get the size of the page returned by palloc() */
-uint32_t palloc_get_granularity(void)
+uint palloc_get_granularity(void)
 {
 	return PAGE_SIZE;
+}
+
+/* Get the size of the remaining (free) physical memory. */
+size_t palloc_get_remaining(void)
+{
+	size_t remaining_bytes = 0;
+
+	cpu_spinlock_acquire(&spinlock);
+	remaining_bytes = ((size_t)remaining_pages) * PAGE_SIZE;
+	cpu_spinlock_release(&spinlock);
+
+	return remaining_bytes;
 }
 
 /* Get the next free physical memory page or PHYS_NULL if none are available. */
@@ -108,6 +121,8 @@ paddr_t palloc(void)
 
 	v = page;
 	p = vtranslate(page);
+
+	remaining_pages--;
 
 _palloc_exit:
 	cpu_spinlock_release(&spinlock);
@@ -142,6 +157,8 @@ void pfree(paddr_t p)
 	if (first_free_page != NULL)
 		first_free_page->prev = page;
 	first_free_page = page;
+
+	remaining_pages++;
 
 	cpu_spinlock_release(&spinlock);
 }

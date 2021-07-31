@@ -16,6 +16,9 @@ noreturn enter_scheduler(void);
 /* Entry point for kernel threads. */
 void kthread_entry(void);
 
+/* Initial ring 0 switch entry point for user threads. */
+void uthread_switch_entry(void);
+
 /* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
 void sched_thread_wait(struct thread_cond *cond, struct cpu_spinlock *spinlock);
 

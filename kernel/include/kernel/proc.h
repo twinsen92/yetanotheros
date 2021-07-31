@@ -47,4 +47,13 @@ void proc_vmreserve(struct proc *proc, vaddr_t v, uint flags);
 /* Write to the process' virtual memory. */
 void proc_vmwrite(struct proc *proc, vaddr_t v, const void *buf, size_t num);
 
+/* Set the break pointer. */
+void proc_set_break(struct proc *proc, vaddr_t v);
+
+/* Changes the break pointer. Returns -1 on error. */
+int proc_brk(struct proc *proc, vaddr_t v);
+
+/* Changes the break pointer. Returns -1 on error. */
+vaddr_t proc_sbrk(struct proc *proc, vaddrdiff_t diff);
+
 #endif

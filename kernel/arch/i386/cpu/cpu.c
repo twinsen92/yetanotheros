@@ -11,6 +11,7 @@
 #include <arch/thread.h>
 #include <arch/cpu/apic.h>
 #include <arch/cpu/gdt.h>
+#include <arch/cpu/selectors.h>
 
 #define MAX_CPUS 8
 #define BOOT_CPU 0
@@ -169,12 +170,16 @@ _cpu_set_cr3_redundant:
 /* Setup TSS for execution of the given thread on the CPU. */
 void cpu_setup_tss(struct x86_cpu *cpu, struct thread *thread)
 {
+	uint tss_idx = seg_selector_to_index(KERNEL_TSS_SELECTOR);
+
 	/* No need to set TSS when switching to a kernel thread. (no ring changes) */
 	if (thread->arch->cs == KERNEL_CODE_SELECTOR)
 		return;
 
 	/* Need to turn off interrupts to modify TSS. */
 	push_no_interrupts();
+	/* Clear the busy flag. Otherwise we will get a GPF.*/
+	cpu->gdt[tss_idx] = gdte_clear_flag(cpu->gdt[tss_idx], TSSD_BIT_BUSY);
 	/* Set the ring 0 ESP, used when returning to kernel mode from user mode. */
 	cpu->tss.ss0 = KERNEL_DATA_SELECTOR;
 	cpu->tss.esp0 = thread->arch->ebp0;

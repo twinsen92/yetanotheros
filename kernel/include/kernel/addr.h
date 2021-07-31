@@ -6,6 +6,7 @@
 
 /* Virtual address. A pointer type is used because virtual memory is supposed to be usable. */
 typedef void *vaddr_t;
+typedef ptrdiff_t vaddrdiff_t;
 typedef uint32_t vaddr32_t;
 
 /* Physical address. An integer type is used to catch attempts to dereference. */

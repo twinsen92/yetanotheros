@@ -15,6 +15,7 @@
 #define GDTE_BIT_CS_CONFORM 0x400 /* Code segment can be accessed by lower rings. */
 #define GDTE_BIT_CS_EXECUTABLE 0x800 /* Code segment is executable. */
 #define GDTE_BIT 0x1000 /* GDT segment. */
+#define TSSD_BIT_BUSY 0x200 /* TSS descriptor busy flag. */
 
 /* Type flags */
 
@@ -30,7 +31,7 @@
 #define GDTE_DATA32_FLAGS (GDTE_BIT_DS_WRITABLE | GDTE_BIT | SEG_BIT_PRESENT | GDTE_BIT_32 \
 	| GDTE_BIT_PAGE)
 #define GDTE_TSS_FLAGS (GDTE_BIT_ACCESSED | GDTE_BIT_CS_EXECUTABLE | SEG_BIT_PRESENT \
-	| GDTE_BIT_32 | GDTE_BIT_PAGE)
+	| GDTE_BIT_32)
 
 /* Control register segmentation related bits. */
 
@@ -109,6 +110,21 @@ static inline seg_t gdte_construct(uint32_t base, uint32_t limit, uint32_t flags
 	seg |= limit & 0x0000FFFF; /* limit bits 15:0 */
 
 	return seg;
+}
+
+static inline seg_t gdte_clear_flag(seg_t seg, uint32_t flags)
+{
+	seg_t ret = 0;
+	uint32_t upper = (uint32_t)(seg >> 32);
+	uint32_t lower = (uint32_t)(seg & 0xffffffff);
+
+	upper &= ~flags;
+
+	ret = (seg_t)upper;
+	ret <<= 32;
+	ret |= lower;
+
+	return ret;
 }
 
 #define seg_selector_to_index(sel) ((sel & ~0x07) / sizeof(seg_t))

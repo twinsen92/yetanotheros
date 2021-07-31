@@ -28,4 +28,7 @@ tid_t schedule_thread(pid_t pid, struct thread *thread);
 #define schedule_kernel_thread(entry, cookie, name) \
 	schedule_thread(PID_KERNEL, kthread_create(entry, cookie, name))
 
+/* Reset performance counters. */
+void schedule_reset_perf_counters(void);
+
 #endif

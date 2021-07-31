@@ -37,20 +37,6 @@ struct arch_thread
    on the CPU. */
 void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_t cs, uint16_t ds);
 
-/* Builds a thread object. */
-void x86_thread_construct_thread(struct thread *thread,
-	const char *name,
-	vaddr_t stack0,
-	size_t stack0_size,
-	vaddr_t stack,
-	size_t stack_size,
-	void (*tentry)(void),
-	void (*entry)(void *),
-	void *cookie,
-	bool int_enabled,
-	uint16_t cs,
-	uint16_t ds);
-
 /* This is what the stack looks like when x86_thread_switch switches stack pointers. Parameters,
    return address and saved EBP are omitted. */
 packed_struct x86_switch_frame

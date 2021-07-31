@@ -1,6 +1,6 @@
 /* kernel/syscall.c - syscall subsystem */
 #include <kernel/cdefs.h>
-#include <kernel/syscall.h>
+#include <kernel/syscall_impl.h>
 #include <kernel/thread.h>
 
 noreturn syscall_exit(void)

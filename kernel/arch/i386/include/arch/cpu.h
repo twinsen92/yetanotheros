@@ -35,7 +35,7 @@ struct x86_cpu
 
 	struct dtr gdtr;
 	seg_t gdt[YAOS2_GDT_NOF_ENTRIES];
-	volatile struct tss tss;
+	volatile struct tss tss; /* TODO: Make sure TSS does not cross page boundary. (7.2.1 Vol. 3) */
 
 	/* Scheduler fields. */
 	int preempt_disabled;

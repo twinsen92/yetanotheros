@@ -4,7 +4,7 @@
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
-#include <kernel/syscall.h>
+#include <kernel/syscall_impl.h>
 #include <arch/cpu.h>
 #include <arch/heap.h>
 #include <arch/init.h>

@@ -51,6 +51,7 @@ void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_
 	thread->sleep_since = 0;
 	thread->sleep_until = 0;
 	thread->cond = NULL;
+	thread->sched_count = 0;
 
 	/* Set the context. */
 	thread->arch->cs = cs;
@@ -58,7 +59,7 @@ void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_
 }
 
 /* Builds a kernel x86_thread object. */
-void x86_thread_construct_thread(struct thread *thread,
+static void x86_thread_construct_thread(struct thread *thread,
 	const char *name,
 	vaddr_t stack0,
 	size_t stack0_size,
@@ -71,9 +72,6 @@ void x86_thread_construct_thread(struct thread *thread,
 	uint16_t cs,
 	uint16_t ds)
 {
-	struct isr_frame *isr_frame;
-	struct x86_switch_frame *switch_frame;
-
 	x86_thread_construct_empty(thread, name, cs, ds);
 
 	thread->arch->tentry = tentry;
@@ -105,6 +103,13 @@ void x86_thread_construct_thread(struct thread *thread,
 
 	thread->arch->int_enabled = int_enabled;
 	thread->arch->cli_stack = 0;
+}
+
+/* Setup for the initial kernel thread stack (starting at x86_thread_switch). */
+static void setup_kthread_stack(struct thread *thread)
+{
+	struct isr_frame *isr_frame;
+	struct x86_switch_frame *switch_frame;
 
 	/* 2. We'll be switching in an interrupt handler. We need to imitate the stack during
 	   an interrupt, so that iret works. */
@@ -113,24 +118,18 @@ void x86_thread_construct_thread(struct thread *thread,
 
 	/* isr_exit stack */
 	isr_frame->ebp = thread->arch->ebp0;
-	isr_frame->ds = ds;
-	isr_frame->es = ds;
+	isr_frame->ds = thread->arch->ds;
+	isr_frame->es = thread->arch->ds;
 	isr_frame->fs = 0;
 	isr_frame->gs = 0;
 
-	/* IRET stack. When returning to a different ring, we have to also specify SS:ESP. */
+	/* IRET stack. No need to specify SS:ESP for kernel threads. */
 	isr_frame->ss = 0;
 	isr_frame->esp = 0;
 
-	if (cs == USER_CODE_SELECTOR)
-	{
-		isr_frame->ss = ds;
-		isr_frame->esp = thread->arch->ebp;
-	}
-
-	isr_frame->eflags = int_enabled ? EFLAGS_IF : 0;
-	isr_frame->cs = cs;
-	isr_frame->eip = (uint32_t)tentry;
+	isr_frame->eflags = thread->arch->int_enabled ? EFLAGS_IF : 0;
+	isr_frame->cs = thread->arch->cs;
+	isr_frame->eip = (uint32_t)thread->arch->tentry;
 
 	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
 	   the stack, but omitting the parameters. Make ret take us to isr_exit. */
@@ -152,8 +151,51 @@ struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *n
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
 	x86_thread_construct_thread(thread, name, stack, 4096, NULL, 0, &kthread_entry, entry, cookie,
 		true, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	setup_kthread_stack(thread);
 
 	return thread;
+}
+
+/* Setup for the initial user thread stack (starting at x86_thread_switch). */
+static void setup_uthread_stack(struct thread *thread)
+{
+	struct isr_frame *isr_frame;
+	struct x86_switch_frame *switch_frame;
+
+	uint32_t *uptr;
+
+	/* 3. We'll be switching in an interrupt handler. We need to imitate the stack during
+	   an interrupt, so that iret works. */
+	thread->arch->esp0 = thread->arch->esp0 - sizeof(struct isr_frame);
+	isr_frame = (struct isr_frame *)thread->arch->esp0;
+
+	/* isr_exit stack */
+	isr_frame->ebp = thread->arch->ebp0;
+	isr_frame->ds = thread->arch->ds;
+	isr_frame->es = thread->arch->ds;
+	isr_frame->fs = 0;
+	isr_frame->gs = 0;
+
+	/* IRET stack. We're returning to a different ring, so we have to also specify SS:ESP. */
+	isr_frame->ss = thread->arch->ds;
+	isr_frame->esp = thread->arch->ebp;
+
+	isr_frame->eflags = thread->arch->int_enabled ? EFLAGS_IF : 0;
+	isr_frame->cs = thread->arch->cs;
+	isr_frame->eip = (uint32_t)thread->arch->tentry;
+
+	/* 2. uthread_switch_entry stack. We just write a return address. */
+	thread->arch->esp0 = thread->arch->esp0 - sizeof(uint32_t);
+	uptr = (uint32_t *)thread->arch->esp0;
+	*uptr = (uint32_t)isr_exit;
+
+	/* 1. After this thread is switched to, we will be in x86_thread_switch. Build it's frame once
+	   the stack, but omitting the parameters. Make ret take us to uthread_switch_entry. */
+	thread->arch->esp0 = thread->arch->esp0 - sizeof(struct x86_switch_frame);
+	switch_frame = (struct x86_switch_frame *)thread->arch->esp0;
+
+	switch_frame->ebp = thread->arch->ebp0;
+	switch_frame->eip = (uint32_t)uthread_switch_entry;
 }
 
 struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_size,
@@ -167,6 +209,7 @@ struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
 	x86_thread_construct_thread(thread, name, stack0, 4096, stack, stack_size, tentry, NULL, NULL,
 		true, USER_CODE_SELECTOR, USER_DATA_SELECTOR);
+	setup_uthread_stack(thread);
 
 	return thread;
 }
@@ -174,9 +217,12 @@ struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_
 /* Frees a thread object. */
 void thread_free(struct thread *thread)
 {
-	kfree(thread->arch->stack);
-	if (thread->arch->stack0)
-		kfree(thread->arch->stack0);
+#ifdef KERNEL_DEBUG
+	if (thread->tid < MAX_THREADS)
+		debug_x86_threads[thread->tid] = NULL;
+#endif
+	/* We do not free the N ring stack because it is not a valid address in kernel VM. */
+	kfree(thread->arch->stack0);
 	kfree(thread->arch);
 	kfree(thread);
 }

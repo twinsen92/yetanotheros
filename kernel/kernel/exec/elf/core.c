@@ -103,16 +103,18 @@ void exec_user_elf_program(const char *path)
 		handle_section(proc, f, &section_32);
 	}
 
+	vfs_close(f);
+
 	/* Allocate a stack for the program right after its executable. */
 	proc_vmreserve(proc, vbreak, VM_USER | VM_WRITE);
 	stack = vbreak;
 	stack_size = PAGE_SIZE;
 	vbreak += PAGE_SIZE;
 
+	/* Set the break pointer now that we have everything covered. */
+	proc_set_break(proc, vbreak);
+
 	/* Create a user thread and schedule it. */
 	thread = uthread_create((void (*)(void))header_32.pe_pos, stack, stack_size, "elf thread");
 	schedule_proc(proc, thread);
-
-	/* Close the file and cleanup. */
-	vfs_close(f);
 }

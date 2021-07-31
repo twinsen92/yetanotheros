@@ -184,6 +184,8 @@ noreturn enter_scheduler(void)
 		/* Try running the thread. */
 		if (thread->state == THREAD_READY)
 		{
+			thread->sched_count++;
+
 			proc = thread->parent;
 
 			/* Store the original state of the interrupts in the scheduler thread. */
@@ -259,6 +261,16 @@ void kthread_entry(void)
 	struct thread *thread = get_current_thread();
 	thread->entry(thread->cookie);
 	thread_exit();
+}
+
+/* Entry point for user threads. */
+void uthread_switch_entry(void)
+{
+	/* We enter with the global scheduler lock. We have to release it for other schedulers to work. */
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	if((cpu_get_eflags() & EFLAGS_IF) == 0)
+		kpanic("thread_entry(): interrupts not enabled");
 }
 
 /* Make the current thread wait on the given condition. A spinlock is unlocked and then relocked. */
@@ -413,6 +425,25 @@ tid_t schedule_thread(pid_t pid, struct thread *thread)
 	sheduler_put_proc(proc);
 
 	return tid;
+}
+
+/* Reset performance counters. */
+void schedule_reset_perf_counters(void)
+{
+	struct proc *proc;
+	struct thread *thread;
+
+	cpu_spinlock_acquire(&global_scheduler_lock);
+
+	LIST_FOREACH(proc, &processes, pointers)
+	{
+		LIST_FOREACH(thread, &(proc->threads), lptrs)
+		{
+			thread->sched_count = 0;
+		}
+	}
+
+	cpu_spinlock_release(&global_scheduler_lock);
 }
 
 /* kernel/thread.h */
