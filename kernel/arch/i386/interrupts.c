@@ -17,6 +17,14 @@ void generic_interrupt_handler(struct isr_frame *frame)
 	struct x86_cpu *cpu;
 	void (*handler)(struct isr_frame*);
 
+#ifdef KERNEL_DEBUG
+	/* It's easier to debug paging problems with CR2 and CR3 on stack. */
+	paddr_t cr2;
+	asm volatile ("movl %%cr2, %0" : "=r" (cr2));
+	paddr_t cr3;
+	asm volatile ("movl %%cr3, %0" : "=r" (cr3));
+#endif
+
 	kassert(frame->int_no < ISR_MAX);
 	handler = handlers[frame->int_no];
 

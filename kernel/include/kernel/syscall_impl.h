@@ -6,6 +6,6 @@
 
 void init_syscall(void);
 
-noreturn syscall_exit(void);
+noreturn syscall_exit(int status);
 
 #endif

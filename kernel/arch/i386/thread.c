@@ -221,7 +221,7 @@ void thread_free(struct thread *thread)
 	if (thread->tid < MAX_THREADS)
 		debug_x86_threads[thread->tid] = NULL;
 #endif
-	/* We do not free the N ring stack because it is not a valid address in kernel VM. */
+	/* We do not free the N ring stack because it does not belong to thread.c. */
 	kfree(thread->arch->stack0);
 	kfree(thread->arch);
 	kfree(thread);

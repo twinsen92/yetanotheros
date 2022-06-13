@@ -30,6 +30,8 @@ struct proc *proc_alloc(const char *name)
 	kmemcpy(proc->name, name, len);
 	proc->name[len] = 0;
 
+	LIST_INIT(&(proc->threads));
+
 	/* Create a page directory. */
 	thread_mutex_create(&(proc->arch->pd_mutex));
 	proc->arch->pd = paging_alloc_dir();
@@ -174,7 +176,7 @@ static int unsafe_brk(struct proc *proc, vaddr_t v)
 
 	while (vfrom <= vto)
 	{
-		unsafe_vmreserve(proc, vfrom, PAGE_BIT_USER | PAGE_BIT_RW);
+		unsafe_vmreserve(proc, vfrom, VM_USER | VM_WRITE);
 		vfrom += PAGE_SIZE;
 	}
 
@@ -205,16 +207,18 @@ int proc_brk(struct proc *proc, vaddr_t v)
 /* Changes the break pointer. Returns -1 on error. */
 vaddr_t proc_sbrk(struct proc *proc, vaddrdiff_t diff)
 {
-	vaddr_t ret = (vaddr_t)-1;
+	vaddr_t ret;
 
 	/* We need to read/write some physical pages. This has to be done with kernel page tables. */
 	kassert(is_using_kernel_page_tables());
 
 	thread_mutex_acquire(&(proc->arch->pd_mutex));
 
-	/* Try calling brk. After a successful call, cur_vbreak will be modified. */
-	if (unsafe_brk(proc, proc->arch->cur_vbreak + diff) >= 0)
-		ret = proc->arch->cur_vbreak;
+	/* Remember the previous break address. Call brk and return -1 on error. */
+	ret = proc->arch->cur_vbreak;
+
+	if (unsafe_brk(proc, proc->arch->cur_vbreak + diff) == -1)
+		ret = (vaddr_t)-1;
 
 	thread_mutex_release(&(proc->arch->pd_mutex));
 

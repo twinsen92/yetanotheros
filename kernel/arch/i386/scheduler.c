@@ -222,6 +222,8 @@ noreturn enter_scheduler(void)
 _scheduler_continue:
 		cpu_spinlock_release(&global_scheduler_lock);
 	}
+
+	kpanic("enter_scheduler(): scheduler exited");
 }
 
 static void reschedule(void)
@@ -324,10 +326,13 @@ void sched_thread_notify_one(struct thread_cond *cond)
 			{
 				thread->state = THREAD_READY;
 				STAILQ_INSERT_HEAD(&queue, thread, sqptrs);
+				/* We were only supposed to notify one thread. */
+				goto notified;
 			}
 		}
 	}
 
+notified:
 	cpu_spinlock_release(&global_scheduler_lock);
 }
 

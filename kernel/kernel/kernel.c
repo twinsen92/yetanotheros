@@ -2,8 +2,8 @@
 #include <kernel/block.h>
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
-#include <kernel/scheduler.h>
 #include <kernel/test.h>
+#include <kernel/thread.h>
 #include <kernel/vfs.h>
 #include <kernel/devices/pci.h>
 #include <kernel/fs/fat.h>
@@ -40,11 +40,13 @@ noreturn kernel_main(void)
 
 	//kalloc_test_main();
 	//fat_test_main(root_fs);
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 20; i++)
 		exec_user_elf_program("/usr/bin/hello");
 
 	kdprintf("done creating processes\n");
+	thread_sleep(1000);
 	kdprintf("remaining %x bytes (after)\n", palloc_get_remaining());
 
-	while(1);
+	kdprintf("Bye, kernel World!\n");
+	thread_exit();
 }

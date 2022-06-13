@@ -17,13 +17,14 @@ struct arch_thread
 
 	/* Ring N stack. */
 	uint32_t ebp; /* Bottom of the stack pointer. */
-	vaddr_t stack; /* Stack top pointer. */
+	vaddr_t stack; /* Stack top pointer. NULL if using kernel selectors. It does not belong to
+					  thread.c. */
 	size_t stack_size;
 
 	/* Ring 0 stack. */
 	uint32_t ebp0; /* Bottom of the kernel stack pointer. 0 if using kernel selectors. */
 	uint32_t esp0; /* Current ring 0 stack pointer. */
-	vaddr_t stack0; /* Kernel stack top pointer. NULL if using kernel selectors. */
+	vaddr_t stack0; /* Kernel stack top pointer. */
 	size_t stack0_size;
 
 	/* Interrupts state. These should be filled in by the scheduler. */

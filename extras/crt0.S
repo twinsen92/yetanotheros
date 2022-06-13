@@ -21,7 +21,8 @@ _start:
 	# main(argc, argv)
 	call main
 
-	# SYSCALL_EXIT
+	# syscall1 (SYSCALL_EXIT, %eax)
+	movl %eax, %ebx
 	movl $1, %eax
 	int $0x80
 
