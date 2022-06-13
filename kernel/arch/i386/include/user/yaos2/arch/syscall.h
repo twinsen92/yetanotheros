@@ -1,11 +1,6 @@
-/* libc/arch/i386/syscall.h - x86 syscall macros */
-#ifndef ARCH_I386_SYSCALL_H_
-#define ARCH_I386_SYSCALL_H_
-
-/* TODO: Synchronize with kernel somehow */
-#define SYSCALL_EXIT 1
-#define SYSCALL_BRK 2
-#define SYSCALL_SBRK 3
+/* user/yaos2/arch/syscall.h - x86 syscall macros (user-space API definitions) */
+#ifndef _USER_YAOS2_I386_SYSCALL_H_
+#define _USER_YAOS2_I386_SYSCALL_H_
 
 #define asm_syscall "int $0x80"
 

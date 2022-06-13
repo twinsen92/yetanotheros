@@ -1,13 +1,25 @@
 /* libc/arch/i386/unistd.c - x86 unistd.h implementation */
 
-#include "syscall.h"
+#include <yaos2/kernel/syscalls.h>
+#include <yaos2/arch/syscall.h>
+#include <errno.h>
 
 int brk(void *ptr)
 {
-	return syscall1(SYSCALL_BRK, (int)ptr);
+	int ret = syscall1(SYSCALL_BRK, (int)ptr);
+
+	if (ret == -1)
+		errno = ENOMEM;
+
+	return ret;
 }
 
 void *sbrk(int increment)
 {
-	return (void*)syscall1(SYSCALL_SBRK, increment);
+	int ret = syscall1(SYSCALL_SBRK, increment);
+
+	if (ret == -1)
+		errno = ENOMEM;
+
+	return (void *)ret;
 }

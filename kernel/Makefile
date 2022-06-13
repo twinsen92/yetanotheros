@@ -91,8 +91,8 @@ install: install-headers install-kernel
 
 install-headers:
 	mkdir -p $(DESTDIR)$(INCLUDEDIR)
-	cp -R --preserve=timestamps include/. $(DESTDIR)$(INCLUDEDIR)/.
-	cp -R --preserve=timestamps $(ARCHDIR)/include/. $(DESTDIR)$(INCLUDEDIR)/.
+	cp -R --preserve=timestamps include/user/. $(DESTDIR)$(INCLUDEDIR)/.
+	cp -R --preserve=timestamps $(ARCHDIR)/include/user/. $(DESTDIR)$(INCLUDEDIR)/.
 
 install-kernel: yaos2_multiboot.kernel
 	mkdir -p $(DESTDIR)$(BOOTDIR)

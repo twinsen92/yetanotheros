@@ -1,9 +1,9 @@
 /* arch/i386/syscall.c - x86 syscall entry point */
+#include <user/yaos2/kernel/syscalls.h>
 #include <kernel/addr.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/syscall_impl.h>
-#include <kernel/syscalls.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/paging.h>

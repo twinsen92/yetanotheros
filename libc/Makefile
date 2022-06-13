@@ -14,7 +14,7 @@ INCLUDEDIR?=$(PREFIX)/include
 LIBDIR?=$(EXEC_PREFIX)/lib
 
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-CPPFLAGS:=$(CPPFLAGS) -Iinclude
+CPPFLAGS:=$(CPPFLAGS) -I$(DESTDIR)$(INCLUDEDIR) -Iinclude
 
 ARCHDIR=arch/$(HOSTARCH)
 
@@ -34,6 +34,7 @@ string/memcpy.o \
 string/memmove.o \
 string/memset.o \
 string/strlen.o \
+errno.o \
 
 HOSTEDOBJS=\
 $(ARCH_HOSTEDOBJS) \
