@@ -65,7 +65,7 @@ void proc_free(struct proc *proc)
 
 		/* Present, non-global pages have been allocated for this process. We can safely return
 		   those pages to the physical page allocator. */
-		if (pte & PAGE_BIT_PRESENT && (pte & PAGE_BIT_GLOBAL) == 0)
+		if ((pte & PAGE_BIT_PRESENT) && (pte & PAGE_BIT_GLOBAL) == 0)
 			pfree(pte_get_paddr(pte));
 
 		v += PAGE_SIZE;
@@ -159,7 +159,7 @@ static int unsafe_brk(struct proc *proc, vaddr_t v)
 
 	/* Make sure we do not go lower than the base break address, and we do not place the new break
 	   address in a kernel-occupied virtual memory region. */
-	if (v < proc->arch->vbreak || vm_get_pflags(v) & PAGE_BIT_GLOBAL)
+	if (v < proc->arch->vbreak || (vm_get_pflags(v) & PAGE_BIT_GLOBAL))
 	{
 		return -1;
 	}

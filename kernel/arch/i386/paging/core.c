@@ -84,7 +84,7 @@ void paging_free_dir(paddr_t pd)
 
 	for (i = 0; i < PD_LENGTH; i++)
 	{
-		if (pde[i] & PAGE_BIT_PRESENT && (pde[i] & PAGE_BIT_GLOBAL) == 0)
+		if ((pde[i] & PAGE_BIT_PRESENT) && (pde[i] & PAGE_BIT_GLOBAL) == 0)
 			pfree(pde_get_paddr(pde[i]));
 	}
 
@@ -100,7 +100,7 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pte_t *pte;
 	paddr_t pt;
 
-	if (flags & PAGE_BIT_GLOBAL && pd != phys_kernel_pd)
+	if ((flags & PAGE_BIT_GLOBAL) && pd != phys_kernel_pd)
 		kpanic("paging_map(): attempted to use the global flag in non-kernel page directory");
 
 	/* Potential deadlock because of our palloc() use. */
@@ -119,7 +119,7 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	pde = pde + pdi;
 
 	/* Make sure the we do not overwrite kernel page structures! */
-	if ((*pde) & PAGE_BIT_GLOBAL && pd != phys_kernel_pd)
+	if (((*pde) & PAGE_BIT_GLOBAL) && pd != phys_kernel_pd)
 		kpanic("paging_map(): attempted to overwrite global kernel PD entries in non-kernel PD");
 
 	if (pde_get_paddr(*pde) == PHYS_NULL)
