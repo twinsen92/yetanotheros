@@ -14,7 +14,7 @@ INCLUDEDIR?=$(PREFIX)/include
 LIBDIR?=$(EXEC_PREFIX)/lib
 
 CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-CPPFLAGS:=$(CPPFLAGS) -I$(DESTDIR)$(INCLUDEDIR) -Iinclude
+CPPFLAGS:=$(CPPFLAGS)-DLIBC_DEBUG -I$(DESTDIR)$(INCLUDEDIR) -Iinclude
 
 ARCHDIR=arch/$(HOSTARCH)
 
@@ -29,12 +29,15 @@ stdio/printf.o \
 stdio/putchar.o \
 stdio/puts.o \
 stdlib/abort.o \
-string/memcmp.o \
-string/memcpy.o \
-string/memmove.o \
-string/memset.o \
-string/strlen.o \
+stdlib/convert.o \
+stdlib/exit.o \
+stdlib/heap.o \
+string/memutils.o \
+string/strutils.o \
+assert.o \
 errno.o \
+init.o \
+unistd.o \
 
 HOSTEDOBJS=\
 $(ARCH_HOSTEDOBJS) \

@@ -12,6 +12,8 @@ _argv:
 _start:
 	movl %esp, %ebp
 
+	call _yaos2_libc_init
+
 	# TODO: Pass something useful to the main procedure.
 	# argv
 	movl _argv, %eax
@@ -20,6 +22,8 @@ _start:
 	pushl $1
 	# main(argc, argv)
 	call main
+
+	call _yaos2_libc_atexit_entry
 
 	# syscall1 (SYSCALL_EXIT, %eax)
 	movl %eax, %ebx

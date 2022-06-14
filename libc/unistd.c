@@ -1,4 +1,4 @@
-/* libc/arch/i386/unistd.c - x86 unistd.h implementation */
+/* libc/unistd.c - unistd.h implementation */
 
 #include <yaos2/kernel/syscalls.h>
 #include <yaos2/arch/syscall.h>

@@ -1,6 +1,6 @@
 /* extras/hello.c - simple user program */
 
-#include <unistd.h>
+#include <stdlib.h>
 
 int main(int argc, char **argv)
 {
@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 
 	for (int i = 0; i < 100; i++)
 	{
-		heap = sbrk(sizeof(int));
+		heap = malloc(sizeof(int));
 		*heap = 0x12345678;
 	}
 

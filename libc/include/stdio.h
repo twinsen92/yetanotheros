@@ -9,6 +9,12 @@
 extern "C" {
 #endif
 
+typedef int FILE;
+
+#define stdin ((FILE*)0)
+#define stdout ((FILE*)1)
+#define stderr ((FILE*)2)
+
 int printf(const char* __restrict, ...);
 int putchar(int);
 int puts(const char*);
