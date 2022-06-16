@@ -43,7 +43,7 @@ void eb_create(struct exclusive_buffer *buffer, size_t size, uintptr_t alignment
 	buffer->flags = flags | EBF_EOF;
 	buffer->alignment = kmax(alignment, 1);
 	buffer->buffer_size = size;
-	buffer->buffer = kalloc(HEAP_NORMAL, buffer->alignment, size);
+	buffer->buffer = kzalloc(HEAP_NORMAL, buffer->alignment, size);
 	buffer->head = buffer->buffer;
 	buffer->tail = buffer->buffer;
 
@@ -82,7 +82,7 @@ void eb_unlock(struct exclusive_buffer *buffer)
 }
 
 /* Reads a requested number of bytes. Waits until all of the bytes have been read into dest. */
-void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
+size_t eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 {
 	size_t num_read = 0, batch;
 
@@ -112,6 +112,8 @@ void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size)
 
 	if (num_read > 0)
 		thread_cond_notify(&(buffer->changed));
+
+	return num_read;
 }
 
 /* Tries to read at most size bytes. Returns the acutal number of read bytes. */
@@ -161,7 +163,7 @@ static void unsafe_growing_write(struct exclusive_buffer *buffer, const uint8_t 
 }
 
 /* Writes size bytes to the buffer. Waits until all data has been written to the buffer. */
-void eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size)
+size_t eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size)
 {
 	size_t num_written = 0, batch;
 
@@ -202,6 +204,8 @@ _eb_write_done:
 
 	if (num_written > 0)
 		thread_cond_notify(&(buffer->changed));
+
+	return num_written;
 }
 
 /* Tries to write at most size bytes. Returns the actual number of bytes written. */

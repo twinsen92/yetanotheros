@@ -13,6 +13,7 @@ static int file_read(struct file *f, void *buf, int num)
 
 	/* TODO: Is this mutex really necessary? */
 	thread_mutex_acquire(&(f->mutex));
+	kassert(f->node->lock != NULL);
 	f->node->lock(f->node);
 
 	if (f->offset >= f->node->get_size(f->node))
@@ -36,6 +37,7 @@ static int file_write(struct file *f, const void *buf, int num)
 		return result;
 
 	thread_mutex_acquire(&(f->mutex));
+	kassert(f->node->lock != NULL);
 	f->node->lock(f->node);
 	result = f->node->write(f->node, buf, f->offset, num);
 	f->offset += result;

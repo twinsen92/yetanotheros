@@ -2,6 +2,7 @@
 #ifndef _KERNEL_PROC_H
 #define _KERNEL_PROC_H
 
+#include <user/yaos2/kernel/types.h>
 #include <kernel/addr.h>
 #include <kernel/cdefs.h>
 #include <kernel/queue.h>
@@ -13,8 +14,6 @@
 #define PROC_READY			2 /* Process is ready to be scheduled. */
 #define PROC_DEFUNCT		3 /* Process has exited and is waiting to be collected. */
 #define PROC_TRUNCATE		4 /* Process can be deleted. */
-
-typedef unsigned int pid_t;
 
 struct proc
 {

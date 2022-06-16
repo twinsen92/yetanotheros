@@ -31,11 +31,15 @@ KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 kernel/block/mbr.o \
 kernel/block/registry.o \
+kernel/char/registry.o \
 kernel/cpu/checkpoint.o \
 kernel/devices/ata_pio.o \
 kernel/devices/pci.o \
 kernel/drivers/ata/generic.o \
 kernel/exec/elf/core.o \
+kernel/fs/devfs_vfs_core.o \
+kernel/fs/devfs_vfs_node.o \
+kernel/fs/devfs.o \
 kernel/fs/fat_core.o \
 kernel/fs/fat_vfs.o \
 kernel/fs/fat.o \
@@ -47,6 +51,7 @@ kernel/exclusive_buffer.o \
 kernel/kernel.o \
 kernel/printf.o \
 kernel/syscall.o \
+kernel/utils.o \
 
 OBJS=\
 $(ARCHDIR)/crti.o \

@@ -1,5 +1,6 @@
 
 #include <kernel/cdefs.h>
+#include <kernel/char.h>
 #include <kernel/cpu.h>
 #include <kernel/debug.h>
 #include <kernel/exclusive_buffer.h>
@@ -7,6 +8,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/thread.h>
 #include <kernel/utils.h>
+#include <kernel/vfs.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/serial.h>
@@ -277,4 +279,66 @@ void serial_read(struct serial *com)
 void serial_write(struct serial *com)
 {
 	thread_cond_notify(&(com->data_available));
+}
+
+/* char_dev interface */
+
+struct serial_char_dev
+{
+	struct char_dev cdev;
+	struct serial *com;
+	struct exclusive_buffer input;
+	struct exclusive_buffer output;
+};
+
+static struct serial_char_dev com1_cdev;
+static struct serial_char_dev com2_cdev;
+
+static size_t serial_cdev_read(struct char_dev *cdev, void *buf, size_t count);
+static size_t serial_cdev_write(struct char_dev *cdev, const void *buf, size_t count);
+
+void install_com1_cdev(void)
+{
+	/* TODO: How do we decide how big the buffer should be? */
+	eb_create(&(com1_cdev.input), 128, 1, 0);
+	eb_create(&(com1_cdev.output), 128, 1, 0);
+	kstrcpy(com1_cdev.cdev.name, "com1");
+	com1_cdev.cdev.opaque = &com1_cdev;
+	com1_cdev.cdev.read = serial_cdev_read;
+	com1_cdev.cdev.write = serial_cdev_write;
+	com1_cdev.com = serial_get_com1();
+	cdev_register(&(com1_cdev.cdev), VFS_NODE_BIT_READABLE | VFS_NODE_BIT_WRITEABLE);
+	serial_subscribe_input(com1_cdev.com, &(com1_cdev.input));
+	serial_subscribe_output(com1_cdev.com, &(com1_cdev.output));
+}
+
+void install_com2_cdev(void)
+{
+	/* TODO: How do we decide how big the buffer should be? */
+	eb_create(&(com2_cdev.input), 128, 1, 0);
+	eb_create(&(com2_cdev.output), 128, 1, 0);
+	kstrcpy(com2_cdev.cdev.name, "com2");
+	com2_cdev.cdev.opaque = &com2_cdev;
+	com2_cdev.cdev.read = serial_cdev_read;
+	com2_cdev.cdev.write = serial_cdev_write;
+	com2_cdev.com = serial_get_com2();
+	cdev_register(&(com2_cdev.cdev), VFS_NODE_BIT_READABLE | VFS_NODE_BIT_WRITEABLE);
+	serial_subscribe_input(com1_cdev.com, &(com2_cdev.input));
+	serial_subscribe_output(com1_cdev.com, &(com2_cdev.output));
+}
+
+#define get_serial_cdev(cdev) ((struct serial_char_dev *)cdev->opaque)
+
+static size_t serial_cdev_read(struct char_dev *cdev, void *buf, size_t count)
+{
+	return eb_read(&(get_serial_cdev(cdev)->input), buf, count);
+}
+
+static size_t serial_cdev_write(struct char_dev *cdev, const void *buf, size_t count)
+{
+	struct serial_char_dev *scdev = get_serial_cdev(cdev);
+	/* TODO: Whether we get out of eb_write depends on the size of the buffer. This is bad. */
+	size_t written = eb_write(&(scdev->output), buf, count);
+	serial_write(scdev->com);
+	return written;
 }

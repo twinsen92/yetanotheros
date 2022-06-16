@@ -53,13 +53,13 @@ void eb_lock(struct exclusive_buffer *buffer);
 void eb_unlock(struct exclusive_buffer *buffer);
 
 /* Reads a requested number of bytes. Waits until all of the bytes have been read into dest. */
-void eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size);
+size_t eb_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size);
 
 /* Tries to read at most size bytes. Returns the acutal number of read bytes. */
 size_t eb_try_read(struct exclusive_buffer *buffer, uint8_t *dest, size_t size);
 
 /* Writes size bytes to the buffer. Waits until all data has been written to the buffer. */
-void eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size);
+size_t eb_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size);
 
 /* Tries to write at most size bytes. Returns the actual number of bytes written. */
 size_t eb_try_write(struct exclusive_buffer *buffer, const uint8_t *src, size_t size);

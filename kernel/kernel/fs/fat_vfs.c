@@ -345,6 +345,7 @@ uint fat_vfs_node_get_num_leaves(struct vfs_node *node)
 /* Get leaf number n. First "0" leaf always points at itself. */
 inode_t fat_vfs_node_get_leaf(struct vfs_node *node, uint n)
 {
+	/* XXX: This increments the ref counter without decrementing it... */
 	return fat_vfs_node_get_leaf_node(node, n)->index;
 }
 

@@ -1,10 +1,13 @@
 /* init.c - generic x86 initialization */
+#include <kernel/block.h>
 #include <kernel/cdefs.h>
+#include <kernel/char.h>
 #include <kernel/debug.h>
 #include <kernel/init.h>
 #include <kernel/proc.h>
 #include <kernel/scheduler.h>
 #include <kernel/syscall_impl.h>
+#include <kernel/fs/devfs.h>
 #include <arch/cpu.h>
 #include <arch/heap.h>
 #include <arch/init.h>
@@ -67,6 +70,11 @@ noreturn generic_x86_init(void)
 
 	/* Init SMP stuff. */
 	init_smp();
+
+	/* Initialize driver registers. */
+	devfs_init();
+	init_bdev();
+	cdev_init();
 
 	/* Init x86-specific devices. */
 	mpt_enum_ioapics();

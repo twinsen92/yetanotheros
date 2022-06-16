@@ -106,4 +106,6 @@ static inline const void *kmemchr(const void *v, int val, size_t num)
 #define kmin(x, y) ((x) > (y) ? (y) : (x))
 #define kmax(x, y) ((x) > (y) ? (x) : (y))
 
+bool kstrcmp(const char *p1, const char *p2);
+
 #endif

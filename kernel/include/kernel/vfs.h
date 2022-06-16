@@ -89,7 +89,11 @@ struct vfs_node
 LIST_HEAD(vfs_node_list, vfs_node);
 
 /* Initializes the virtual filesystem. The super node provided in argument will be available at /.*/
-void vfs_init(struct vfs_super *root);
+void vfs_init(void);
+
+void vfs_mount(const char *path, struct vfs_super *root);
+
+struct vfs_super *vfs_umount(const char *path);
 
 /* Get a vfs_node object using the path. Returns null if it could not be created. */
 struct vfs_node *vfs_get(const char *path);
