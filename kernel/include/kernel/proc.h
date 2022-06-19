@@ -11,10 +11,26 @@
 
 #define PID_KERNEL 0
 
-#define PROC_NEW			0 /* Process has just been created. */
-#define PROC_READY			2 /* Process is ready to be scheduled. */
-#define PROC_DEFUNCT		3 /* Process has exited and is waiting to be collected. */
-#define PROC_TRUNCATE		4 /* Process can be deleted. */
+enum proc_state
+{
+	/* Process has just been created. */
+	PROC_NEW = 0,
+
+	/* Process is ready to be scheduled. */
+	PROC_READY,
+
+	/*
+	 * Process has started exiting due to exit(). We're waiting until all threads exit before we
+	 * can mark it as DEFUNCT.
+	 */
+	PROC_EXITING,
+
+	/* Process has exited and is waiting to be collected. */
+	PROC_DEFUNCT,
+
+	/* Process can be deleted. */
+	PROC_TRUNCATE,
+};
 
 #define PROC_MAX_FILES 16
 
@@ -23,12 +39,14 @@ struct proc
 	/* Constant part. */
 
 	pid_t pid;
-	int state;
+	pid_t parent;
 	char name[32];
 	struct arch_proc *arch;
 
 	/* Dynamic part. Protected with global scheduler lock. */
 
+	int state;
+	int exit_status;
 	struct thread_list threads; /* Thread list. */
 
 	/* Dynamic part. Protected with process mutex. */
@@ -81,5 +99,8 @@ int proc_get_vacant_fd(struct proc *proc);
 struct file *proc_get_file(struct proc *proc, int fd);
 int proc_bind(struct proc *proc, int fd, struct file *file);
 struct file *proc_unbind(struct proc *proc, int fd);
+
+noreturn proc_exit(int status);
+pid_t proc_wait(int *status);
 
 #endif

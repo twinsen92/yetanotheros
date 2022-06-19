@@ -150,5 +150,5 @@ void exec_user_elf_program(const char *path, const char *stdin, const char *stdo
 	proc_unlock(proc);
 
 	/* Schedule the main thread. */
-	schedule_proc(proc, thread);
+	schedule_proc(NULL, proc, thread);
 }

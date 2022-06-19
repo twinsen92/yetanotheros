@@ -44,8 +44,8 @@ kernel/fs/fat_core.o \
 kernel/fs/fat_vfs.o \
 kernel/fs/fat.o \
 kernel/syscall/brk.o \
-kernel/syscall/exit.o \
 kernel/syscall/file.o \
+kernel/syscall/proc.o \
 kernel/test/fat_test.o \
 kernel/test/kalloc_test.o \
 kernel/vfs/core.o \
@@ -54,6 +54,7 @@ kernel/vfs/file.o \
 kernel/exclusive_buffer.o \
 kernel/kernel.o \
 kernel/printf.o \
+kernel/proc.o \
 kernel/utils.o \
 
 OBJS=\

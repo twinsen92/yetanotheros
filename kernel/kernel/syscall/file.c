@@ -15,8 +15,6 @@
 /* Buffer size for big reads or writes. */
 #define SYSCALL_FILE_BUFFER 512
 
-#define get_current_proc() get_current_thread()->parent
-
 int syscall_open(uvaddr_t path, int flags)
 {
 	/* TODO: Introduce some flags. */

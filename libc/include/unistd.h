@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+pid_t wait(int *status);
+
 int brk(void *ptr);
 void *sbrk(int increment);
 

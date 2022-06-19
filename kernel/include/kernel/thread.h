@@ -9,15 +9,36 @@
 #include <kernel/queue.h>
 #include <kernel/ticks.h>
 
+#include <user/yaos2/kernel/types.h>
+
 #define TID_INVALID 0
 
-#define THREAD_NEW			0 /* Thread has just been created. */
-#define THREAD_RUNNING		1 /* Thread is currently running. */
-#define THREAD_SCHEDULER	2 /* Thread is the scheduler thread. */
-#define THREAD_READY		3 /* Thread is ready to be scheduled. */
-#define THREAD_BLOCKED		4 /* Thread is waiting on a lock. */
-#define THREAD_SLEEPING		5 /* Thread is sleeping. */
-#define THREAD_EXITED		6 /* Thread has exited. */
+enum thread_state
+{
+	/* Thread is the scheduler thread. */
+	THREAD_SCHEDULER = -1,
+
+	/* Thread has just been created. */
+	THREAD_NEW = 0,
+
+	/* Thread is ready to be scheduled. */
+	THREAD_READY,
+
+	/* Thread is currently running. */
+	THREAD_RUNNING,
+
+	/* Thread is waiting for child process. */
+	THREAD_WAITING,
+
+	/* Thread is waiting on a lock. */
+	THREAD_BLOCKED,
+
+	/* Thread is sleeping. */
+	THREAD_SLEEPING,
+
+	/* Thread has exited. */
+	THREAD_EXITED,
+};
 
 typedef unsigned int tid_t;
 
@@ -26,20 +47,25 @@ struct arch_thread;
 
 struct thread
 {
+	/* Constant part. */
+
 	tid_t tid; /* ID of the thread */
-	int state; /* Current thread state. */
-	ticks_t sleep_since; /* Sleep start tick, if state == THREAD_SLEEPING. */
-	ticks_t sleep_until; /* Sleep end tick, if state == THREAD_SLEEPING. */
-	struct thread_cond *cond; /* Condition this thread is waiting on, if state == THREAD_BLOCKED. */
 	char name[32]; /* Name of the thread. */
-	uint sched_count;
+	struct proc *parent; /* Parent process */
+	struct arch_thread *arch; /* Arch-dependent structure. */
 
 	void (*entry)(void *); /* Entry point the scheduler will call. */
 	void *cookie; /* The scheduler will pass this cookie to the entry point. */
 
-	struct proc *parent; /* Parent process */
+	/* Dynamic part. Protected by global scheduler lock. */
 
-	struct arch_thread *arch; /* Arch-dependent structure. */
+	int state; /* Current thread state. */
+	pid_t collected_pid;
+	int collected_status;
+	ticks_t sleep_since; /* Sleep start tick, if state == THREAD_SLEEPING. */
+	ticks_t sleep_until; /* Sleep end tick, if state == THREAD_SLEEPING. */
+	struct thread_cond *cond; /* Condition this thread is waiting on, if state == THREAD_BLOCKED. */
+	uint sched_count;
 
 	LIST_ENTRY(thread) lptrs;
 	STAILQ_ENTRY(thread) sqptrs;

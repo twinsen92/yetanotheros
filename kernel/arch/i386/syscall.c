@@ -14,6 +14,9 @@ static void syscall_handler(struct isr_frame *frame)
 	{
 	case SYSCALL_EXIT:
 		syscall_exit(frame->ebx);
+	case SYSCALL_WAIT:
+		frame->eax = (uint32_t)syscall_wait((uvaddr_t)frame->ebx);
+		break;
 
 	case SYSCALL_BRK:
 		frame->eax = (uint32_t)syscall_brk((uvaddr_t)frame->ebx);

@@ -4,6 +4,8 @@
 
 #define EUNSPEC			2 /* TODO: Try to get rid of these. Recurring.. */
 
+#define ENOSTATUS		10 /* Process had an undefined exit status. */
+
 #define ENOMEM			100
 #define EOVERFLOW		101
 

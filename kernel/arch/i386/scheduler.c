@@ -13,6 +13,8 @@
 #include <arch/thread.h>
 #include <arch/cpu/selectors.h>
 
+#include <user/yaos2/kernel/errno.h>
+
 /* Scheduler lock. This applies to all structures used by the scheduler on all CPUs. */
 static struct cpu_spinlock global_scheduler_lock;
 
@@ -60,13 +62,71 @@ static void insert_thread(struct proc *proc, struct thread *thread)
 
 	thread->state = THREAD_READY;
 	proc->state = PROC_READY;
+	proc->exit_status = -ENOSTATUS;
 
 	if (thread->state == THREAD_READY)
 		STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
 }
 
-/* Removes the given thread, marking it THREAD_TRUNCATE. Also checks if the parent process can be
-   marked as PROC_DEFUNCT. */
+static void collect_process(struct proc *proc)
+{
+	kassert(cpu_spinlock_held(&global_scheduler_lock));
+
+	proc->state = PROC_TRUNCATE;
+
+	/* TODO: This should probably not be done while holding scheduler lock... */
+	/* Remove the process and free it. */
+	LIST_REMOVE(proc, pointers);
+	proc_free(proc);
+}
+
+static void make_process_defunct(struct proc *proc)
+{
+	struct proc *parent_proc;
+	struct thread *parent_thread;
+	bool collected;
+
+	kassert(cpu_spinlock_held(&global_scheduler_lock));
+	proc->state = PROC_DEFUNCT;
+
+	/* The process has no real parent. Collect it immediately. */
+	if (proc->parent == PID_KERNEL)
+	{
+		collect_process(proc);
+		return;
+	}
+
+	/* Try to wake up a thread waiting in the parent process. */
+	collected = false;
+
+	LIST_FOREACH(parent_proc, &processes, pointers)
+	{
+		if (parent_proc->pid != proc->parent)
+			continue;
+
+		LIST_FOREACH(parent_thread, &(parent_proc->threads), lptrs)
+		{
+			if (parent_thread->state != THREAD_WAITING)
+				continue;
+
+			/* TODO: Should we actually wake up multiple threads? */
+			parent_thread->collected_pid = proc->pid;
+			parent_thread->collected_status = proc->exit_status;
+			parent_thread->state = THREAD_READY;
+			collected = true;
+		}
+	}
+
+	/* If we have woken up a thread, collect the process. */
+	if (collected)
+		collect_process(proc);
+}
+
+
+/*
+ * Removes the given thread, marking it THREAD_TRUNCATE. If we destroyed the last thread, make
+ * the process PROC_DEFUNCT.
+ */
 static void destroy_thread(struct thread *thread)
 {
 	struct proc *proc;
@@ -85,11 +145,7 @@ static void destroy_thread(struct thread *thread)
 	{
 		/* We do not want to destroy the kernel process! */
 		kassert(proc != &kernel_process);
-		proc->state = PROC_DEFUNCT;
-
-		/* Remove the process and free it. */
-		LIST_REMOVE(proc, pointers);
-		proc_free(proc);
+		make_process_defunct(proc);
 	}
 }
 
@@ -382,7 +438,7 @@ void sheduler_put_proc(struct proc *proc)
 
 /* Insert a proc and its main thread into the scheduler, making it runnable. Transfers ownership
    of the proc object. */
-pid_t schedule_proc(struct proc *proc, struct thread *thread)
+pid_t schedule_proc(struct proc *parent, struct proc *proc, struct thread *thread)
 {
 	pid_t pid;
 	tid_t tid;
@@ -390,6 +446,10 @@ pid_t schedule_proc(struct proc *proc, struct thread *thread)
 	/* Assign a PID and a TID. */
 	pid = atomic_fetch_add(&next_pid, 1);
 	proc->pid = pid;
+	if (parent)
+		proc->parent = parent->pid;
+	else
+		proc->parent = PID_KERNEL;
 	proc->state = PROC_NEW;
 	tid = atomic_fetch_add(&next_tid, 1);
 	thread->tid = tid;
@@ -484,4 +544,60 @@ void thread_sleep(unsigned int milliseconds)
 	thread->sleep_until = cur + (milliseconds * TICKS_PER_MILLISECOND);
 	reschedule();
 	cpu_spinlock_release(&global_scheduler_lock);
+}
+
+/* kernel/proc.h */
+
+noreturn proc_exit(int status)
+{
+	struct thread *thread;
+
+	cpu_spinlock_acquire(&global_scheduler_lock);
+	thread = get_current_thread();
+	thread->parent->state = PROC_EXITING;
+	thread->parent->exit_status = status;
+	thread->state = THREAD_EXITED;
+	reschedule();
+	kpanic("proc_exit(): process returned");
+}
+
+pid_t proc_wait(int *status)
+{
+	struct thread *thread;
+	struct proc *proc, *child;
+	bool collected = false;
+	pid_t pid = PID_KERNEL;
+
+	cpu_spinlock_acquire(&global_scheduler_lock);
+	thread = get_current_thread();
+	proc = thread->parent;
+
+	/* Look for child processes and collect the first PROC_DEFUNCT process. */
+	LIST_FOREACH(child, &processes, pointers)
+	{
+		if (child->parent == proc->pid && child->state == PROC_DEFUNCT)
+		{
+			pid = child->pid;
+			*status = child->exit_status;
+			collect_process(child);
+			collected = true;
+			break;
+		}
+	}
+
+	/*
+	 * We did not collect a process. Wait for the scheduler to let us know about a PROC_DEFUNCT
+	 * process.
+	 */
+	if (!collected)
+	{
+		thread->state = THREAD_WAITING;
+		reschedule();
+		*status = thread->collected_status;
+		pid = thread->collected_pid;
+	}
+
+	cpu_spinlock_release(&global_scheduler_lock);
+
+	return pid;
 }

@@ -19,6 +19,12 @@ static inline int set_errno_and_convert(int ret)
 	return ret;
 }
 
+pid_t wait(int *status)
+{
+	int ret = syscall1(SYSCALL_WAIT, (int)status);
+	return set_errno_and_convert(ret);
+}
+
 int brk(void *ptr)
 {
 	int ret = syscall1(SYSCALL_BRK, (int)ptr);
