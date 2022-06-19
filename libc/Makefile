@@ -25,9 +25,9 @@ CPPFLAGS:=$(CPPFLAGS) $(ARCH_CPPFLAGS)
 
 FREEOBJS=\
 $(ARCH_FREEOBJS) \
-stdio/printf.o \
-stdio/putchar.o \
-stdio/puts.o \
+stdio/nprintf.o \
+stdio/stdout.o \
+stdio/stream.o \
 stdlib/abort.o \
 stdlib/convert.o \
 stdlib/exit.o \

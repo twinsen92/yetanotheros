@@ -62,16 +62,19 @@ paddr_t paging_alloc_dir(void);
 void paging_free_dir(paddr_t pd);
 
 /* Map physical page p to virtual address v using given flags for page tables in pd. */
-void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags);
+void paging_map(paddr_t pd, xvaddr_t v, paddr_t p, pflags_t flags);
 
 /* Get the entry of the virutal address v in page tables pd. */
-pte_t paging_get_entry(paddr_t pd, vaddr_t v);
+pte_t paging_get_entry(paddr_t pd, xvaddr_t v);
 
 /* Get the physical address of the virutal address v in page tables pd. */
-paddr_t paging_get(paddr_t pd, vaddr_t v);
+paddr_t paging_get(paddr_t pd, xvaddr_t v);
+
+/* Read num number of bytes into buf from the virtual address v of page tables pd. */
+void vmread(paddr_t pd, uvaddr_t v, void *buf, size_t num);
 
 /* Write num number of bytes from buf into the virtual address v of page tables pd. */
-void vmwrite(paddr_t pd, vaddr_t v, const void *buf, size_t num);
+void vmwrite(paddr_t pd, uvaddr_t v, const void *buf, size_t num);
 
 /*
 	Kernel page tables management.
@@ -103,6 +106,6 @@ void init_paging_ipi(void);
    pd - the parent page directory's physical address,
    v - non-NULL if we only modified this particular page,
    global - true if the changes contain the global bit. */
-void paging_propagate_changes(paddr_t pd, vaddr_t v, bool global);
+void paging_propagate_changes(paddr_t pd, xvaddr_t v, bool global);
 
 #endif

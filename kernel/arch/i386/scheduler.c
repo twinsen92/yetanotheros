@@ -115,7 +115,6 @@ static inline void restore_interrupts(struct thread *thread, struct x86_cpu *cpu
 noreturn enter_scheduler(void)
 {
 	struct x86_cpu *cpu;
-	struct proc *proc;
 	struct thread *thread;
 
 	cpu = cpu_current();
@@ -135,7 +134,6 @@ noreturn enter_scheduler(void)
 	/* Set the scheduler fields in the CPU. */
 	cpu->thread = NULL;
 	thread = NULL;
-	proc = NULL;
 
 	/* Wait for all other CPUs to enter the scheduler loop. */
 	cpu_checkpoint_enter(&scheduler_checkpoint);
@@ -186,8 +184,6 @@ noreturn enter_scheduler(void)
 		{
 			thread->sched_count++;
 
-			proc = thread->parent;
-
 			/* Store the original state of the interrupts in the scheduler thread. */
 			store_interrupts(cpu->scheduler, cpu);
 
@@ -200,14 +196,17 @@ noreturn enter_scheduler(void)
 
 			/* Setup TSS for execution of the given thread on the CPU. */
 			cpu_setup_tss(cpu, thread);
-			cpu_set_cr3(proc->arch->pd);
+			cpu_set_cr3(thread->arch->cr3);
 
 			thread->state = THREAD_RUNNING;
 
 			x86_thread_switch(cpu->scheduler->arch, thread->arch);
 
-			/* TODO: Switch back to kernel CR3. */
-			cpu_set_cr3(kernel_process.arch->pd);
+			/* Remember which CR3 we were using. */
+			cpu->thread->arch->cr3 = cpu_get_cr3();
+
+			/* Switch back to kernel CR3. */
+			cpu_set_cr3(phys_kernel_pd);
 
 			/* Store the thread's state of interrupts. */
 			store_interrupts(cpu->thread, cpu);

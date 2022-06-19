@@ -106,22 +106,29 @@ struct file
 {
 	/* Constant part. */
 	struct vfs_node *node;
-
-	/* Dynamic part, protected by mutex. */
-	struct thread_mutex mutex;
-	uint offset;
-
 	void *opaque;
+
+	/* File list protected part. */
+	uint ref;
+
+	/* Dynamic part, protected by node mutex. */
+	uint offset;
 
 	int (*read)(struct file *f, void *buf, int num);
 	int (*write)(struct file *f, const void *buf, int num);
 	void (*seek_beg)(struct file *f, uint offset);
 	/* TODO: Add seek. */
+
+	LIST_ENTRY(file) lptrs;
 };
+
+LIST_HEAD(file_list, file);
 
 /* Opens a new file object using the path. Returns null if not found. All files are open in
    "overwrite" mode. */
 struct file *vfs_open(const char *path);
+
+struct file *vfs_file_dup(struct file *f);
 
 /* Closes an open file object. */
 void vfs_close(struct file *f);

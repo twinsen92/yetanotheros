@@ -50,8 +50,8 @@ noreturn kernel_main(void)
 
 	//kalloc_test_main();
 	//fat_test_main(root_fs);
-	for (int i = 0; i < 20; i++)
-		exec_user_elf_program("/usr/bin/hello");
+	for (int i = 0; i < 5; i++)
+		exec_user_elf_program("/usr/bin/hello", "/dev/com2", "/dev/com1", "/dev/com1");
 
 	kdprintf("done creating processes\n");
 	thread_sleep(1000);

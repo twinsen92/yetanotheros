@@ -10,7 +10,7 @@
 /* IPI spinlock. While held, only the CPU holding the lock can issue INT_FLUSH_TLB_IPIs. */
 static struct cpu_spinlock ipi_spinlock;
 static paddr_t ipi_updated_pd;
-static vaddr_t ipi_updated_page;
+static xvaddr_t ipi_updated_page;
 static bool ipi_global;
 static atomic_bool ipi_received;
 
@@ -69,7 +69,7 @@ void init_paging_ipi(void)
    pd - the parent page directory's physical address,
    v - non-NULL if we only modified this particular page,
    global - true if the changes contain the global bit. */
-void paging_propagate_changes(paddr_t pd, vaddr_t v, bool global)
+void paging_propagate_changes(paddr_t pd, xvaddr_t v, bool global)
 {
 	cpu_spinlock_acquire(&ipi_spinlock);
 

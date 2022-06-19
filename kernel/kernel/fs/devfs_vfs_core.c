@@ -8,12 +8,12 @@
 
 /* vfs_super interface */
 
-struct vfs_node *devfs_get_root(struct vfs_super *super)
+struct vfs_node *devfs_get_root(__unused struct vfs_super *super)
 {
 	return &devfs_root;
 }
 
-struct vfs_node *devfs_get_by_index(struct vfs_super *super, inode_t index)
+struct vfs_node *devfs_get_by_index(__unused struct vfs_super *super, inode_t index)
 {
 	struct vfs_node *node;
 	struct devfs_vfs_node_data *node_data;
@@ -35,7 +35,7 @@ struct vfs_node *devfs_get_by_index(struct vfs_super *super, inode_t index)
 	return node;
 }
 
-struct vfs_node *devfs_get_by_path(struct vfs_super *super, const char *path)
+struct vfs_node *devfs_get_by_path(__unused struct vfs_super *super, const char *path)
 {
 	const char *name;
 	struct vfs_node *node;
@@ -70,7 +70,7 @@ struct vfs_node *devfs_get_by_path(struct vfs_super *super, const char *path)
 	return node;
 }
 
-void devfs_put(struct vfs_super *super, struct vfs_node *node)
+void devfs_put(__unused struct vfs_super *super, struct vfs_node *node)
 {
 	struct devfs_vfs_node_data *node_data;
 
@@ -112,7 +112,7 @@ int devfs_root_write(__unused struct vfs_node *node, __unused const void *buf, _
 	return 0;
 }
 
-uint devfs_root_get_num_leaves(struct vfs_node *node)
+uint devfs_root_get_num_leaves(__unused struct vfs_node *node)
 {
 	kassert(thread_mutex_held(&devfs_mutex));
 	return devfs_num_leaves;

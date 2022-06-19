@@ -11,9 +11,11 @@ extern "C" {
 
 typedef int FILE;
 
-#define stdin ((FILE*)0)
-#define stdout ((FILE*)1)
-#define stderr ((FILE*)2)
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+
+#define STDIN_N
 
 int printf(const char* __restrict, ...);
 int putchar(int);

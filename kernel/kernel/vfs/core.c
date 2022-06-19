@@ -7,6 +7,8 @@
 #include <kernel/utils.h>
 #include <kernel/vfs.h>
 
+#include "file.h"
+
 /* TODO: Yeah, this should be redesigned :) Many issues can be caused by this. */
 struct vfs_mount
 {
@@ -25,6 +27,7 @@ static struct vfs_mount_list vfs_mounts;
 void vfs_init(void)
 {
 	thread_mutex_create(&vfs_mount_mutex);
+	vfs_file_init();
 }
 
 void vfs_mount(const char *path, struct vfs_super *super_node)

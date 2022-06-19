@@ -3,6 +3,7 @@
 #include <kernel/syscall_impl.h>
 #include <kernel/thread.h>
 
+/* Exits the process. */
 noreturn syscall_exit(__unused int status)
 {
 	/* TODO: This actually means exit PROCESS. */

@@ -93,7 +93,7 @@ void paging_free_dir(paddr_t pd)
 }
 
 /* Map physical page p to virtual address v using given flags for page tables in pd. */
-void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
+void paging_map(paddr_t pd, xvaddr_t v, paddr_t p, pflags_t flags)
 {
 	int pdi, pti;
 	pde_t *pde;
@@ -109,7 +109,7 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 	/* We need to read and write some physical pages. This has to be done with kernel page tables. */
 	kassert(is_using_kernel_page_tables());
 
-	v = (vaddr_t)mask_to_page(v);
+	v = (xvaddr_t)mask_to_page(v);
 
 	pdi = get_pd_index(v);
 	pti = get_pt_index(v);
@@ -147,7 +147,7 @@ void paging_map(paddr_t pd, vaddr_t v, paddr_t p, pflags_t flags)
 }
 
 /* Get the entry of the virutal address v in page tables pd. */
-pte_t paging_get_entry(paddr_t pd, vaddr_t v)
+pte_t paging_get_entry(paddr_t pd, xvaddr_t v)
 {
 	int pdi, pti;
 	pde_t *pde;
@@ -156,7 +156,7 @@ pte_t paging_get_entry(paddr_t pd, vaddr_t v)
 	/* We need to read some physical pages. This has to be done with kernel page tables. */
 	kassert(is_using_kernel_page_tables());
 
-	v = (vaddr_t)mask_to_page(v);
+	v = (xvaddr_t)mask_to_page(v);
 
 	pdi = get_pd_index(v);
 	pti = get_pt_index(v);
@@ -177,36 +177,53 @@ pte_t paging_get_entry(paddr_t pd, vaddr_t v)
 }
 
 /* Get the physical address of the virutal address v in page tables pd. */
-paddr_t paging_get(paddr_t pd, vaddr_t v)
+paddr_t paging_get(paddr_t pd, xvaddr_t v)
 {
 	return pte_get_paddr(paging_get_entry(pd, v));
 }
 
-/* Write num number of bytes from buf into the virtual address v of page tables pd. */
-void vmwrite(paddr_t pd, vaddr_t v, const void *buf, size_t num)
+static void vmxchg(paddr_t pd, uvaddr_t v, void *buf, size_t num, bool write)
 {
 	paddr_t p;
-	byte *writable;
+	byte *accessible;
 	size_t off, batch;
+	size_t buf_off = 0;
 
 	/* Need to be using kernel pages. */
 	kassert(is_using_kernel_page_tables());
 
 	while (num > 0)
 	{
-		/* Get the page from the page tables and translate it to a writable address. */
+		/* Get the page from the page tables and translate it to an accessible address. */
 		p = paging_get(pd, v);
-		writable = translate_or_panic(p);
+		accessible = translate_or_panic(p);
 
-		/* Calculate how much we have to write to this page. */
+		/* Calculate how much we have to read/write to this page. */
 		off = (size_t)(v - mask_to_page(v));
 		batch = kmin(PAGE_SIZE - off, num);
 
-		/* Write the bytes. */
-		kmemcpy(writable + off, buf, batch);
+		/* Read/write the bytes. */
+		if (write)
+			kmemcpy(accessible + off, buf + buf_off, batch);
+		else
+			kmemcpy(buf + buf_off, accessible + off, batch);
+
 		num -= batch;
+		buf_off += batch;
 
 		/* Move onto the next page. */
-		v = (vaddr_t)(mask_to_page(v) + PAGE_SIZE);
+		v = (uvaddr_t)(mask_to_page(v) + PAGE_SIZE);
 	}
+}
+
+/* Read num number of bytes into buf from the virtual address v of page tables pd. TODO: Check the address and return some information. */
+void vmread(paddr_t pd, uvaddr_t v, void *buf, size_t num)
+{
+	vmxchg(pd, v, buf, num, false);
+}
+
+/* Write num number of bytes from buf into the virtual address v of page tables pd. TODO: Check the address and return some information. */
+void vmwrite(paddr_t pd, uvaddr_t v, const void *buf, size_t num)
+{
+	vmxchg(pd, v, (void*)buf, num, true);
 }

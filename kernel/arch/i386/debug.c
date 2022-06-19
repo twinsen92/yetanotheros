@@ -137,8 +137,9 @@ static void get_stack_info(void **top, void **bottom)
 	}
 	else if (cpu->thread && cpu->thread->arch->stack)
 	{
-		*top = cpu->thread->arch->stack;
-		*bottom = cpu->thread->arch->stack + cpu->thread->arch->stack_size;
+		/* TODO: Careful here... */
+		*top = (void*)cpu->thread->arch->stack;
+		*bottom = (void*)cpu->thread->arch->stack + cpu->thread->arch->stack_size;
 	}
 	else
 	{

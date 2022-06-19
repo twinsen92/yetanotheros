@@ -10,6 +10,8 @@
 #include <kernel/utils.h>
 #include <kernel/exec/elf/core.h>
 
+#include <user/yaos2/kernel/defs.h>
+
 static void handle_section_load(struct proc *proc, struct file *f, struct elf_32_section_header *sh)
 {
 	uint8_t *contents;
@@ -18,7 +20,7 @@ static void handle_section_load(struct proc *proc, struct file *f, struct elf_32
 	contents = kalloc(HEAP_NORMAL, 1, sh->file_size);
 	f->seek_beg(f, sh->file_offset);
 	f->read(f, contents, sh->file_size);
-	proc_vmwrite(proc, (vaddr_t)sh->mem_offset, contents, sh->file_size);
+	proc_vmwrite(proc, (uvaddr_t)sh->mem_offset, contents, sh->file_size);
 	kfree(contents);
 }
 
@@ -30,7 +32,8 @@ static void handle_section(struct proc *proc, struct file *f, struct elf_32_sect
 	}
 }
 
-void exec_user_elf_program(const char *path)
+/* TODO: This can be done better... */
+void exec_user_elf_program(const char *path, const char *stdin, const char *stdout, const char *stderr)
 {
 	struct file *f = NULL;
 	struct elf_header header;
@@ -39,8 +42,8 @@ void exec_user_elf_program(const char *path)
 	struct elf_32_section_header section_32;
 	int i;
 	struct proc *proc;
-	vaddr_t vbreak = NULL, v, vto;
-	vaddr_t stack;
+	uvaddr_t vbreak = UVNULL, v, vto;
+	uvaddr_t stack;
 	size_t stack_size;
 	struct thread *thread;
 
@@ -77,8 +80,8 @@ void exec_user_elf_program(const char *path)
 		kassert(program_32.type == ELF_SEG_LOAD);
 
 		/* Reserve memory for this segment in process' virtual space. */
-		v = (vaddr_t)mask_to_page(program_32.mem_offset);
-		vto = (vaddr_t)mask_to_page(program_32.mem_offset + program_32.mem_size);
+		v = (uvaddr_t)mask_to_page(program_32.mem_offset);
+		vto = (uvaddr_t)mask_to_page(program_32.mem_offset + program_32.mem_size);
 
 		while (v <= vto)
 		{
@@ -114,7 +117,38 @@ void exec_user_elf_program(const char *path)
 	/* Set the break pointer now that we have everything covered. */
 	proc_set_break(proc, vbreak);
 
-	/* Create a user thread and schedule it. */
-	thread = uthread_create((void (*)(void))header_32.pe_pos, stack, stack_size, "elf thread");
+	/* Create the main thread. */
+	thread = uthread_create(header_32.pe_pos, stack, stack_size, "elf thread", proc);
+
+	/*
+	 * Open stdin, stdout and stderr. We don't have to compete with any other thread so we'll
+	 * just straight up bind them.
+	 */
+	proc_lock(proc);
+
+	f = vfs_open(stdin);
+
+	if (f == NULL)
+		kpanic("exec_user_elf_program(): could not open stdin");
+
+	proc_bind(proc, STDIN_FILENO, f);
+
+	f = vfs_open(stdout);
+
+	if (f == NULL)
+		kpanic("exec_user_elf_program(): could not open stdout");
+
+	proc_bind(proc, STDOUT_FILENO, f);
+
+	f = vfs_open(stderr);
+
+	if (f == NULL)
+		kpanic("exec_user_elf_program(): could not open stderr");
+
+	proc_bind(proc, STDERR_FILENO, f);
+
+	proc_unlock(proc);
+
+	/* Schedule the main thread. */
 	schedule_proc(proc, thread);
 }

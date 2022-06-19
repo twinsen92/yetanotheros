@@ -60,8 +60,19 @@ static inline bool kmemcmp(const void *p1, const void *p2, size_t len)
 static inline size_t kstrlen(const char *p)
 {
 	size_t result = 0;
-	while(*(p++) != 0)
+	while (*(p++) != 0)
 		result++;
+	return result;
+}
+
+static inline ssize_t kmstrlen(const char *p, ssize_t max)
+{
+	ssize_t result = 0;
+	while (*(p++) != 0) {
+		if (result > max)
+			return -1;
+		result++;
+	}
 	return result;
 }
 
@@ -73,7 +84,7 @@ static inline char *kstrcpy(char *to, const char *from)
 
 static inline const char *kstrchr(const char *str, int chr)
 {
-	while(*str != '\0')
+	while (*str != '\0')
 	{
 		if (*str == chr)
 			return str;
@@ -93,7 +104,7 @@ static inline const void *kmemchr(const void *v, int val, size_t num)
 {
 	const byte *p = v;
 
-	while(num-- > 0)
+	while (num-- > 0)
 	{
 		if (*p == val)
 			return p;

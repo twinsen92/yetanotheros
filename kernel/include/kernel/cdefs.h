@@ -29,5 +29,6 @@ typedef __UINT_FAST64_TYPE__ atomic_uint_fast64_t;
 
 typedef unsigned int uint;
 typedef unsigned char byte;
+typedef long ssize_t;
 
 #endif

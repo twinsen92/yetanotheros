@@ -61,7 +61,7 @@ cdev_handle_t cdev_register(struct char_dev *cdev, uint vfs_flags)
 	return handle;
 }
 
-void cdev_unregister(cdev_handle_t handle)
+void cdev_unregister(__unused cdev_handle_t handle)
 {
 	kpanic("cdev_unregister(): not implemented");
 }
@@ -70,17 +70,17 @@ void cdev_unregister(cdev_handle_t handle)
 
 #define get_cdev(node) ((struct char_dev*)node->opaque)
 
-static uint cdev_devfs_get_size(struct devfs_node *node)
+static uint cdev_devfs_get_size(__unused struct devfs_node *node)
 {
 	return 0;
 }
 
-static int cdev_devfs_read(struct devfs_node *node, void *buf, uint off, int num)
+static int cdev_devfs_read(struct devfs_node *node, void *buf, __unused uint off, int num)
 {
 	return get_cdev(node)->read(get_cdev(node), buf, num);
 }
 
-static int cdev_devfs_write(struct devfs_node *node, const void *buf, uint off, int num)
+static int cdev_devfs_write(struct devfs_node *node, const void *buf, __unused uint off, int num)
 {
 	return get_cdev(node)->write(get_cdev(node), buf, num);
 }

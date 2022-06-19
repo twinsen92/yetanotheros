@@ -44,7 +44,7 @@ int devfs_node_write(struct vfs_node *node, const void *buf, uint off, int num)
 	return node_data->node->write(node_data->node, buf, off, num);
 }
 
-uint devfs_node_get_num_leaves(struct vfs_node *node)
+uint devfs_node_get_num_leaves(__unused struct vfs_node *node)
 {
 	return 0;
 }

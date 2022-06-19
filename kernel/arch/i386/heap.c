@@ -164,6 +164,10 @@ vaddr_t kalloc(int mode, uintptr_t alignment, size_t size)
 	if (!initialized)
 		kpanic("kalloc(): heap was not initialized");
 
+	/* We might call palloc() here. This requires kernel page tables. */
+	if (!is_using_kernel_page_tables())
+		kpanic("kalloc(): called with non-kernel page tables");
+
 	cpu_spinlock_acquire(&spinlock);
 
 	/* TODO: Reuse freed allocations. */

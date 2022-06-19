@@ -3,10 +3,13 @@
 #include <kernel/cdefs.h>
 #include <kernel/debug.h>
 #include <kernel/heap.h>
+#include <kernel/proc.h>
 #include <kernel/thread.h>
 #include <kernel/utils.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
+#include <arch/paging.h>
+#include <arch/proc.h>
 #include <arch/scheduler.h>
 #include <arch/thread.h>
 #include <arch/cpu/selectors.h>
@@ -56,6 +59,8 @@ void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_
 	/* Set the context. */
 	thread->arch->cs = cs;
 	thread->arch->ds = ds;
+
+	thread->arch->cr3 = phys_kernel_pd;
 }
 
 /* Builds a kernel x86_thread object. */
@@ -63,14 +68,15 @@ static void x86_thread_construct_thread(struct thread *thread,
 	const char *name,
 	vaddr_t stack0,
 	size_t stack0_size,
-	vaddr_t stack,
+	uvaddr_t stack,
 	size_t stack_size,
-	void (*tentry)(void),
+	xvaddr_t tentry,
 	void (*entry)(void *),
 	void *cookie,
 	bool int_enabled,
 	uint16_t cs,
-	uint16_t ds)
+	uint16_t ds,
+	paddr_t cr3)
 {
 	x86_thread_construct_empty(thread, name, cs, ds);
 
@@ -82,7 +88,7 @@ static void x86_thread_construct_thread(struct thread *thread,
 	kassert(((uintptr_t)stack) % 16 == 0);
 	kassert(((uintptr_t)stack0) % 16 == 0);
 
-	thread->arch->stack = NULL;
+	thread->arch->stack = UVNULL;
 	thread->arch->stack_size = 0;
 	thread->arch->ebp = 0;
 
@@ -103,6 +109,7 @@ static void x86_thread_construct_thread(struct thread *thread,
 
 	thread->arch->int_enabled = int_enabled;
 	thread->arch->cli_stack = 0;
+	thread->arch->cr3 = cr3;
 }
 
 /* Setup for the initial kernel thread stack (starting at x86_thread_switch). */
@@ -149,8 +156,8 @@ struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *n
 	stack = kalloc(HEAP_NORMAL, 16, 4096);
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
-	x86_thread_construct_thread(thread, name, stack, 4096, NULL, 0, &kthread_entry, entry, cookie,
-		true, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR);
+	x86_thread_construct_thread(thread, name, stack, 4096, UVNULL, 0, (xvaddr_t)&kthread_entry, entry, cookie,
+		true, KERNEL_CODE_SELECTOR, KERNEL_DATA_SELECTOR, phys_kernel_pd);
 	setup_kthread_stack(thread);
 
 	return thread;
@@ -198,8 +205,8 @@ static void setup_uthread_stack(struct thread *thread)
 	switch_frame->eip = (uint32_t)uthread_switch_entry;
 }
 
-struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_size,
-	const char *name)
+struct thread *uthread_create(uvaddr_t tentry, uvaddr_t stack, size_t stack_size,
+	const char *name, struct proc *parent)
 {
 	struct thread *thread;
 	vaddr_t stack0;
@@ -208,7 +215,7 @@ struct thread *uthread_create(void (*tentry)(void), vaddr_t stack, size_t stack_
 	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
 	x86_thread_construct_thread(thread, name, stack0, 4096, stack, stack_size, tentry, NULL, NULL,
-		true, USER_CODE_SELECTOR, USER_DATA_SELECTOR);
+		true, USER_CODE_SELECTOR, USER_DATA_SELECTOR, parent->arch->pd);
 	setup_uthread_stack(thread);
 
 	return thread;

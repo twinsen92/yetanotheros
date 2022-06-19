@@ -7,6 +7,7 @@
 #include <kernel/cdefs.h>
 #include <kernel/queue.h>
 #include <kernel/thread.h>
+#include <kernel/vfs.h>
 
 #define PID_KERNEL 0
 
@@ -15,15 +16,25 @@
 #define PROC_DEFUNCT		3 /* Process has exited and is waiting to be collected. */
 #define PROC_TRUNCATE		4 /* Process can be deleted. */
 
+#define PROC_MAX_FILES 16
+
 struct proc
 {
+	/* Constant part. */
+
 	pid_t pid;
 	int state;
 	char name[32];
-
 	struct arch_proc *arch;
 
+	/* Dynamic part. Protected with global scheduler lock. */
+
 	struct thread_list threads; /* Thread list. */
+
+	/* Dynamic part. Protected with process mutex. */
+
+	struct thread_mutex mutex;
+	struct file *opened_files[PROC_MAX_FILES]; /* TODO: Get rid of this array. */
 
 	LIST_ENTRY(proc) pointers;
 };
@@ -41,18 +52,34 @@ void proc_free(struct proc *proc);
 #define VM_EXEC 0x04
 
 /* Reserves a physical page for the virtual memory page pointed at by v. */
-void proc_vmreserve(struct proc *proc, vaddr_t v, uint flags);
+void proc_vmreserve(struct proc *proc, uvaddr_t v, uint flags);
+
+/* Read from the process' virtual memory. */
+void proc_vmread(struct proc *proc, uvaddr_t v, void *buf, size_t num);
 
 /* Write to the process' virtual memory. */
-void proc_vmwrite(struct proc *proc, vaddr_t v, const void *buf, size_t num);
+void proc_vmwrite(struct proc *proc, uvaddr_t v, const void *buf, size_t num);
 
 /* Set the break pointer. */
-void proc_set_break(struct proc *proc, vaddr_t v);
+void proc_set_break(struct proc *proc, uvaddr_t v);
+
+/* Set process virtual memory. */
+void proc_set_uvm(struct proc *proc);
+
+/* Set kernel virtual memory. */
+void proc_set_kvm(void);
 
 /* Changes the break pointer. Returns -1 on error. */
-int proc_brk(struct proc *proc, vaddr_t v);
+int proc_brk(struct proc *proc, uvaddr_t v);
 
 /* Changes the break pointer. Returns -1 on error. */
-vaddr_t proc_sbrk(struct proc *proc, vaddrdiff_t diff);
+uvaddr_t proc_sbrk(struct proc *proc, uvaddrdiff_t diff);
+
+void proc_lock(struct proc *proc);
+void proc_unlock(struct proc *proc);
+int proc_get_vacant_fd(struct proc *proc);
+struct file *proc_get_file(struct proc *proc, int fd);
+int proc_bind(struct proc *proc, int fd, struct file *file);
+struct file *proc_unbind(struct proc *proc, int fd);
 
 #endif

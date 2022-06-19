@@ -14,9 +14,21 @@ typedef uintptr_t paddr_t;
 typedef uint32_t paddr32_t;
 #define PHYS_NULL 0
 
+/* Virtual address that will not be dereferenced. */
+typedef uintptr_t xvaddr_t;
+typedef ptrdiff_t xvaddrdiff_t;
+#define XVNULL 0
+
+/* User virtual address. */
+typedef uintptr_t uvaddr_t;
+typedef ptrdiff_t uvaddrdiff_t;
+#define UVNULL 0
+
 /* Verbatim converters for vaddr_t/paddr_t */
 #define to_vaddr(x) ((vaddr_t)(x))
 #define to_paddr(x) ((paddr_t)(x))
+#define to_xvaddr(x) ((vaddr_t)(x))
+#define to_uvaddr(x) ((uvaddr_t)(x))
 
 /* Symbol "type". A symbol is not guaranteed to point at actual data, but we use it as sort of
    markers in virtual memory. */

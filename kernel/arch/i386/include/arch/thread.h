@@ -17,8 +17,8 @@ struct arch_thread
 
 	/* Ring N stack. */
 	uint32_t ebp; /* Bottom of the stack pointer. */
-	vaddr_t stack; /* Stack top pointer. NULL if using kernel selectors. It does not belong to
-					  thread.c. */
+	uvaddr_t stack; /* Stack top pointer. NULL if using kernel selectors. It does not belong to
+					   thread.c. */
 	size_t stack_size;
 
 	/* Ring 0 stack. */
@@ -31,7 +31,9 @@ struct arch_thread
 	bool int_enabled; /* Interrupts state when cli_stack was 0. */
 	int cli_stack; /* Number of cli push operations. */
 
-	void (*tentry)(void); /* Entry point of the thread. This is what IRET will take the CPU to. */
+	paddr_t cr3;
+
+	xvaddr_t tentry; /* Entry point of the thread. This is what IRET will take the CPU to. */
 };
 
 /* Builds an empty thread object. This has only one purpose - to create the first kernel thread
