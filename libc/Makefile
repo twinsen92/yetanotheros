@@ -30,6 +30,7 @@ stdio/stdout.o \
 stdio/stream.o \
 stdlib/abort.o \
 stdlib/convert.o \
+stdlib/env.o \
 stdlib/exit.o \
 stdlib/heap.o \
 string/memutils.o \

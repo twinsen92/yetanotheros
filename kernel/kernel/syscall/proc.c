@@ -30,3 +30,16 @@ pid_t syscall_wait(uvaddr_t status)
 
 	return ret;
 }
+
+uvaddr_t syscall_getenvptr(void)
+{
+	struct proc *proc;
+	uvaddr_t ret = -EUNSPEC;
+
+	proc = get_current_proc();
+	proc_set_kvm();
+	ret = proc_get_env(proc);
+	proc_set_uvm(proc);
+
+	return ret;
+}

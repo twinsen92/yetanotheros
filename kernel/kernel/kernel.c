@@ -20,6 +20,12 @@ void ata_gen_install(void);
 void install_com1_cdev(void);
 void install_com2_cdev(void);
 
+static char *test_env[] = {
+		"TEST2=getenv doesn't work well...",
+		"TEST=this works too!",
+		NULL
+};
+
 noreturn kernel_main(void)
 {
 	kdprintf("Hello, kernel World!\n");
@@ -51,7 +57,7 @@ noreturn kernel_main(void)
 	//kalloc_test_main();
 	//fat_test_main(root_fs);
 	for (int i = 0; i < 1; i++)
-		exec_user_elf_program("/usr/bin/hello", "/dev/com2", "/dev/com1", "/dev/com1");
+		exec_user_elf_program("/usr/bin/hello", "/dev/com2", "/dev/com1", "/dev/com1", (const char **)test_env);
 
 	kdprintf("done creating processes\n");
 	thread_sleep(1000);

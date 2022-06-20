@@ -21,12 +21,14 @@ enum file_buf_mode
 
 typedef struct
 {
+
 	/* Constant part. */
 
 	int fd; /* File descriptor. */
 	int flags; /* Flags passed to open. */
 
 	/* Dynamic part. Output buffer. */
+	/* TODO: Add a lock. */
 
 	int buf_mode; /* Buffer mode. */
 	char *buf; /* Buffer. */

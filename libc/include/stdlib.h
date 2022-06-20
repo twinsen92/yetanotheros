@@ -27,6 +27,9 @@ char *unsigned_itoa(unsigned int value, char *str, int base);
 int atoi(const char *str);
 long int strtol(const char *str, char **endptr, int base);
 
+/* env.c */
+char *getenv(const char *name);
+
 #ifdef __cplusplus
 }
 #endif

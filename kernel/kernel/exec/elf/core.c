@@ -33,18 +33,21 @@ static void handle_section(struct proc *proc, struct file *f, struct elf_32_sect
 }
 
 /* TODO: This can be done better... */
-void exec_user_elf_program(const char *path, const char *stdin, const char *stdout, const char *stderr)
+void exec_user_elf_program(const char *path, const char *stdin, const char *stdout, const char *stderr, const char **env)
 {
 	struct file *f = NULL;
 	struct elf_header header;
 	struct elf_32_header header_32;
 	struct elf_32_program_header program_32;
 	struct elf_32_section_header section_32;
-	int i;
+	uint i;
 	struct proc *proc;
 	uvaddr_t vbreak = UVNULL, v, vto;
 	uvaddr_t stack;
 	size_t stack_size;
+	size_t env_num, formatted_env_size;
+	uvaddr_t env_table, env_strings, env_loc;
+	size_t env_strings_offset, len;
 	struct thread *thread;
 
 	/* Open the file and make sure it is open. */
@@ -114,6 +117,55 @@ void exec_user_elf_program(const char *path, const char *stdin, const char *stdo
 	stack_size = PAGE_SIZE;
 	vbreak += PAGE_SIZE;
 	proc_set_stack(proc, stack, stack_size);
+
+	/* Here we create the initial environment table. */
+
+	/* Count how many entries the env array has. Calculate the length of the formatted table. */
+	env_num = 1;
+	formatted_env_size = sizeof(char *);
+
+	while (1)
+	{
+		if (env[env_num - 1] == NULL)
+			break;
+
+		formatted_env_size += kstrlen(env[env_num - 1]) + 1;
+		formatted_env_size += sizeof(char *);
+		env_num++;
+	}
+
+	env_table = vbreak;
+	env_strings = env_table + (env_num * sizeof(char *));
+
+	/* Reserve pages needed to contain the formatted environment table. */
+	for (i = 0; i < (formatted_env_size / PAGE_SIZE) + 1; i++)
+	{
+		proc_vmreserve(proc, vbreak, VM_USER);
+		vbreak += PAGE_SIZE;
+	}
+
+	/* Write the formatted table. */
+	env_strings_offset = 0;
+
+	for (i = 0; i < env_num; i++)
+	{
+		if (env[i] == NULL)
+		{
+			proc_vmwrite(proc, env_table + i * sizeof(char *), &(env[i]), sizeof(char *));
+			break;
+		}
+
+		/* Write the address of the env string. */
+		env_loc = env_strings + env_strings_offset;
+		proc_vmwrite(proc, env_table + i * sizeof(char *), &env_loc, sizeof(char *));
+
+		/* Write the string including the null terminator. */
+		len = kstrlen(env[i]);
+		proc_vmwrite(proc, env_strings + env_strings_offset, env[i], len + 1);
+		env_strings_offset += len + 1;
+	}
+
+	proc_set_env(proc, env_table);
 
 	/* Set the break pointer now that we have everything covered. */
 	proc_set_break(proc, vbreak);

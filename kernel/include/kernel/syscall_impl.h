@@ -14,6 +14,7 @@ pid_t syscall_wait(uvaddr_t status);
 
 int syscall_brk(uvaddr_t ptr);
 uvaddr_t syscall_sbrk(uvaddrdiff_t diff);
+uvaddr_t syscall_getenvptr(void);
 
 int syscall_open(uvaddr_t path, int flags);
 int syscall_close(int fd);

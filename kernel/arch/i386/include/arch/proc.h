@@ -15,6 +15,7 @@ struct arch_proc
 	uvaddr_t vto; /* Highest virtual memory address in use. */
 	uvaddr_t vstack; /* Main thread stack. */
 	size_t stack_size;
+	uvaddr_t venvironment; /* Initial environment. */
 	uvaddr_t vbreak; /* Program break address. */
 	uvaddr_t cur_vbreak; /* Current program break address. */
 };

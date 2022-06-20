@@ -179,6 +179,26 @@ void proc_set_stack(struct proc *proc, uvaddr_t v, size_t size)
 	thread_mutex_release(&(proc->arch->pd_mutex));
 }
 
+/* Set the environment pointer. */
+void proc_set_env(struct proc *proc, uvaddr_t v)
+{
+	thread_mutex_acquire(&(proc->arch->pd_mutex));
+	proc->arch->venvironment = v;
+	thread_mutex_release(&(proc->arch->pd_mutex));
+}
+
+/* Get the environment pointer. */
+uvaddr_t proc_get_env(struct proc *proc)
+{
+	uvaddr_t ret;
+
+	thread_mutex_acquire(&(proc->arch->pd_mutex));
+	ret = proc->arch->venvironment;
+	thread_mutex_release(&(proc->arch->pd_mutex));
+
+	return ret;
+}
+
 /* Set the break pointer. */
 void proc_set_break(struct proc *proc, uvaddr_t v)
 {

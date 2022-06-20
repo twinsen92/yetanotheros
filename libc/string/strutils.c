@@ -83,3 +83,32 @@ int strncmp(const char *s1, const char *s2, size_t num)
 
 	return 0;
 }
+
+char *strstr(const char *s1, const char *s2)
+{
+	size_t len1, len2, i;
+
+	if (s1 == NULL || s2 == NULL)
+		return NULL;
+
+	len1 = strlen(s1);
+	len2 = strlen(s2);
+
+	if (len2 == 0)
+		return (char*)s1;
+
+	if (len1 < len2)
+		return NULL;
+
+	for (i = 0; i < len1; i++)
+	{
+		/* No point iterating further if the remainder of s1 is shorter than s2. */
+		if (len1 - i < len2)
+			break;
+
+		if (strncmp(s1 + i, s2, len2) == 0)
+			return (char*)(s1 + i);
+	}
+
+	return NULL;
+}

@@ -81,6 +81,12 @@ void proc_vmwrite(struct proc *proc, uvaddr_t v, const void *buf, size_t num);
 /* Set the main thread stack pointer. */
 void proc_set_stack(struct proc *proc, uvaddr_t v, size_t size);
 
+/* Set the environment pointer. */
+void proc_set_env(struct proc *proc, uvaddr_t v);
+
+/* Get the environment pointer. */
+uvaddr_t proc_get_env(struct proc *proc);
+
 /* Set the break pointer. */
 void proc_set_break(struct proc *proc, uvaddr_t v);
 

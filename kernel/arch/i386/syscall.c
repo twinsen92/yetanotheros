@@ -29,6 +29,9 @@ static void syscall_handler(struct isr_frame *frame)
 	case SYSCALL_SBRK:
 		frame->eax = (uint32_t)syscall_sbrk((uvaddrdiff_t)frame->ebx);
 		break;
+	case SYSCALL_GETENVPTR:
+		frame->eax = (uint32_t)syscall_getenvptr();
+		break;
 
 	case SYSCALL_OPEN:
 		frame->eax = (uint32_t)syscall_open((uvaddr_t)frame->ebx, (int)frame->ecx);

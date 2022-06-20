@@ -6,6 +6,16 @@
 #include <string.h>
 #include <unistd.h>
 
+static void getenv_and_print(const char *name)
+{
+	char *value = getenv(name);
+
+	if (value)
+		printf("%s=%s\n", name, value);
+	else
+		printf("%s is not defined\n", name);
+}
+
 int main(int argc, char **argv)
 {
 	char *buf;
@@ -43,6 +53,9 @@ int main(int argc, char **argv)
 	printf("Collected child process %d with status %d\n", pid, status);
 
 	printf("Again: %s\n", buf);
+
+	getenv_and_print("TEST");
+	getenv_and_print("ASDF");
 
 	free(buf);
 
