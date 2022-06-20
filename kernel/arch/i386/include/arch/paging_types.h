@@ -35,6 +35,8 @@ typedef uint32_t pflags_t;
 #define pde_construct(addr, flags) ((pde_t)(((uint32_t)(addr)) & 0xfffff000) | (((uint32_t)(flags)) & 0x00000fff))
 #define pte_get_paddr(pte) ((paddr_t)(((pte_t)(pte)) & 0xfffff000))
 #define pde_get_paddr(pde) ((paddr_t)(((pde_t)(pde)) & 0xfffff000))
+#define pte_get_flags(pte) ((paddr_t)(((pte_t)(pte)) & 0x00000fff))
+#define pde_get_flags(pde) ((paddr_t)(((pde_t)(pde)) & 0x00000fff))
 #define pte_has_flags(pte, flags) (((pte_t)(pte)) & ((uint32_t)(flags)) == ((uint32_t)(flags)))
 #define pde_has_flags(pde, flags) (((pde_t)(pde)) & ((uint32_t)(flags)) == ((uint32_t)(flags)))
 

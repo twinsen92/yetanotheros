@@ -64,6 +64,23 @@ paddr_t paging_alloc_dir(void)
 	return pd;
 }
 
+static void paging_free_table(paddr_t pt)
+{
+	pte_t *pte;
+	uint i;
+
+	/* Free present, non-global pages. */
+	pte = translate_or_panic(pt);
+
+	for (i = 0; i < PD_LENGTH; i++)
+	{
+		if ((pte[i] & PAGE_BIT_PRESENT) && (pte[i] & PAGE_BIT_GLOBAL) == 0)
+			pfree(pte_get_paddr(pte[i]));
+	}
+
+	pfree(pt);
+}
+
 /* Free a PD. */
 void paging_free_dir(paddr_t pd)
 {
@@ -85,7 +102,9 @@ void paging_free_dir(paddr_t pd)
 	for (i = 0; i < PD_LENGTH; i++)
 	{
 		if ((pde[i] & PAGE_BIT_PRESENT) && (pde[i] & PAGE_BIT_GLOBAL) == 0)
-			pfree(pde_get_paddr(pde[i]));
+		{
+			paging_free_table(pde_get_paddr(pde[i]));
+		}
 	}
 
 	/* Free the page directory itself. */
@@ -226,4 +245,57 @@ void vmread(paddr_t pd, uvaddr_t v, void *buf, size_t num)
 void vmwrite(paddr_t pd, uvaddr_t v, const void *buf, size_t num)
 {
 	vmxchg(pd, v, (void*)buf, num, true);
+}
+
+static void duplicate_pt(paddr_t dest_pt, paddr_t src_pt)
+{
+	pte_t *dest_pte, *src_pte;
+	void *dest, *src;
+	uint i;
+
+	/* Duplicate present, non-global pages. */
+	dest_pte = translate_or_panic(dest_pt);
+	src_pte = translate_or_panic(src_pt);
+
+	for (i = 0; i < PD_LENGTH; i++)
+	{
+		if ((src_pte[i] & PAGE_BIT_PRESENT) && (src_pte[i] & PAGE_BIT_GLOBAL) == 0)
+		{
+			/* Allocate the page. */
+			dest_pte[i] = palloc() | pte_get_flags(src_pte[i]);
+
+			/* Copy the contents. */
+			dest = translate_or_panic(pte_get_paddr(dest_pte[i]));
+			src = translate_or_panic(pte_get_paddr(src_pte[i]));
+			kmemcpy(dest, src, palloc_get_granularity());
+		}
+	}
+}
+
+void vmdup(paddr_t dest_pd, paddr_t src_pd)
+{
+	pde_t *dest_pde, *src_pde;
+	uint i;
+
+	/* Need to be using kernel pages. */
+	kassert(is_using_kernel_page_tables());
+
+	/* Potential deadlock because of our pfree() use. */
+	check_palloc_lock();
+
+	if (src_pd == phys_kernel_pd)
+		kpanic("vmdup(): attempted to duplicate kernel page directory");
+
+	/* Duplicate present, non-global page tables. */
+	dest_pde = translate_or_panic(dest_pd);
+	src_pde = translate_or_panic(src_pd);
+
+	for (i = 0; i < PD_LENGTH; i++)
+	{
+		if ((src_pde[i] & PAGE_BIT_PRESENT) && (src_pde[i] & PAGE_BIT_GLOBAL) == 0)
+		{
+			dest_pde[i] = palloc() | pde_get_flags(src_pde[i]);
+			duplicate_pt(pde_get_paddr(dest_pde[i]), pde_get_paddr(src_pde[i]));
+		}
+	}
 }

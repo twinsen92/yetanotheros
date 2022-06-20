@@ -6,6 +6,7 @@ enum syscall_num
 {
 	SYSCALL_EXIT = 1,
 	SYSCALL_WAIT,
+	SYSCALL_FORK,
 
 	SYSCALL_BRK,
 	SYSCALL_SBRK,

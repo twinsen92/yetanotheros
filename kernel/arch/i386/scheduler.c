@@ -74,10 +74,7 @@ static void collect_process(struct proc *proc)
 
 	proc->state = PROC_TRUNCATE;
 
-	/* TODO: This should probably not be done while holding scheduler lock... */
-	/* Remove the process and free it. */
-	LIST_REMOVE(proc, pointers);
-	proc_free(proc);
+	/* TODO: Actually free the process. */
 }
 
 static void make_process_defunct(struct proc *proc)
@@ -113,6 +110,8 @@ static void make_process_defunct(struct proc *proc)
 			parent_thread->collected_pid = proc->pid;
 			parent_thread->collected_status = proc->exit_status;
 			parent_thread->state = THREAD_READY;
+			/* Reschedule the thread. */
+			STAILQ_INSERT_TAIL(&queue, parent_thread, sqptrs);
 			collected = true;
 		}
 	}
@@ -135,7 +134,7 @@ static void destroy_thread(struct thread *thread)
 	kassert(thread->state == THREAD_EXITED);
 
 	/* Free the thread's resources. */
-	/* TODO: We might have to switch to process' CR3 here. */
+	/* TODO: This really shouldn't be done here... */
 	proc = thread->parent;
 	LIST_REMOVE(thread, lptrs);
 	/* thread->stack also belongs to us */
@@ -299,7 +298,7 @@ static void reschedule(void)
 		kpanic("reschedule(): bad thread state");
 
 	/* Put the thread back on the scheduler's queue. */
-	if (thread->state != THREAD_BLOCKED)
+	if (thread->state != THREAD_BLOCKED && thread->state != THREAD_WAITING)
 		STAILQ_INSERT_TAIL(&queue, thread, sqptrs);
 
 	/* Do the switch. The scheduler loop takes care of interrupts stack. */
@@ -551,6 +550,16 @@ void thread_sleep(unsigned int milliseconds)
 noreturn proc_exit(int status)
 {
 	struct thread *thread;
+
+	/*
+	 * We will enter this function from the user space system call. Since that is a trap, and not
+	 * a timer interrupt, we will have interrupts enabled. This may cause this CPU to be
+	 * interrupted while holding the global scheduler lock.
+	 *
+	 * TODO: Perhaps it has to be a requirement that the global scheduler lock is held with
+	 * interrupts disabled?
+	 */
+	push_no_interrupts();
 
 	cpu_spinlock_acquire(&global_scheduler_lock);
 	thread = get_current_thread();

@@ -39,13 +39,13 @@ void generic_interrupt_handler(struct isr_frame *frame)
 	{
 		cpu = cpu_current();
 
-		/* Exit thread if the parent process is exiting. */
-		if (cpu->thread && cpu->thread->parent->state == PROC_EXITING)
-			thread_exit();
-
 		/* Do not give up CPU if we have disabled preemption. */
 		if (cpu->preempt_disabled)
 			return;
+
+		/* Exit thread if the parent process is exiting. */
+		if (cpu->thread && cpu->thread->parent->state == PROC_EXITING)
+			thread_exit();
 
 		/* Preempt. */
 		if (cpu->thread && cpu->thread->state == THREAD_RUNNING)

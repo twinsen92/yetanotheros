@@ -4,6 +4,7 @@
 #include <kernel/heap.h>
 #include <kernel/paging.h>
 #include <kernel/proc.h>
+#include <kernel/scheduler.h>
 #include <kernel/thread.h>
 #include <kernel/utils.h>
 #include <kernel/vfs.h>
@@ -13,6 +14,7 @@
 #include <arch/paging.h>
 #include <arch/paging_types.h>
 #include <arch/proc.h>
+#include <arch/cpu/selectors.h>
 
 #include <user/yaos2/kernel/errno.h>
 
@@ -43,6 +45,8 @@ struct proc *proc_alloc(const char *name)
 	proc->arch->pd = paging_alloc_dir();
 	proc->arch->vfrom = UVNULL;
 	proc->arch->vto = UVNULL;
+	proc->arch->vstack = UVNULL;
+	proc->arch->stack_size = 0;
 	proc->arch->vbreak = UVNULL;
 	proc->arch->cur_vbreak = UVNULL;
 
@@ -62,6 +66,9 @@ void proc_free(struct proc *proc)
 	if (palloc_lock_held())
 		kpanic("proc_vmreserve(): holding palloc lock");
 
+	thread_mutex_acquire(&(proc->mutex));
+	thread_mutex_acquire(&(proc->arch->pd_mutex));
+
 	/* Free the physical pages allocated to this process. */
 	v = proc->arch->vfrom;
 
@@ -78,6 +85,9 @@ void proc_free(struct proc *proc)
 	}
 
 	paging_free_dir(proc->arch->pd);
+
+	kfree(proc->arch);
+	kfree(proc);
 }
 
 static void unsafe_vmreserve(struct proc *proc, uvaddr_t v, uint flags)
@@ -157,6 +167,15 @@ void proc_vmwrite(struct proc *proc, uvaddr_t v, const void *buf, size_t num)
 
 	thread_mutex_acquire(&(proc->arch->pd_mutex));
 	vmwrite(proc->arch->pd, v, buf, num);
+	thread_mutex_release(&(proc->arch->pd_mutex));
+}
+
+/* Set the main thread stack pointer. */
+void proc_set_stack(struct proc *proc, uvaddr_t v, size_t size)
+{
+	thread_mutex_acquire(&(proc->arch->pd_mutex));
+	proc->arch->vstack = v;
+	proc->arch->stack_size = size;
 	thread_mutex_release(&(proc->arch->pd_mutex));
 }
 
@@ -255,4 +274,53 @@ uvaddr_t proc_sbrk(struct proc *proc, uvaddrdiff_t diff)
 	thread_mutex_release(&(proc->arch->pd_mutex));
 
 	return ret;
+}
+
+struct proc *proc_fork(struct thread **main_thread, struct isr_frame *frame)
+{
+	struct thread *ct;
+	struct proc *cp;
+	struct proc *new;
+	int i;
+
+	ct = get_current_thread();
+	cp = ct->parent;
+
+	if (cp->pid == PID_KERNEL)
+		kpanic("proc_fork(): attempted to fork kernel process");
+
+	if (ct->arch->cs != USER_CODE_SELECTOR)
+		kpanic("proc_fork(): thread has non-user selector");
+
+	/* We need to read/write some physical pages. This has to be done with kernel page tables. */
+	kassert(is_using_kernel_page_tables());
+
+	/* Lock both the normal mutex and the PD mutex to gain complete control of the process. */
+	thread_mutex_acquire(&(cp->mutex));
+	thread_mutex_acquire(&(cp->arch->pd_mutex));
+
+	new = proc_alloc(cp->name);
+	vmdup(new->arch->pd, cp->arch->pd);
+	new->arch->vfrom = cp->arch->vfrom;
+	new->arch->vto = cp->arch->vto;
+	new->arch->vstack = cp->arch->vstack;
+	new->arch->stack_size = cp->arch->stack_size;
+	new->arch->vbreak = cp->arch->vbreak;
+	new->arch->cur_vbreak = cp->arch->cur_vbreak;
+
+	*main_thread = uthread_fork_create(new, ct, frame);
+
+	/* Duplicate file descriptors too. */
+	for (i = 0; i < PROC_MAX_FILES; i++)
+	{
+		if (cp->opened_files[i] == NULL)
+			continue;
+
+		new->opened_files[i] = vfs_file_dup(cp->opened_files[i]);
+	}
+
+	thread_mutex_release(&(cp->arch->pd_mutex));
+	thread_mutex_release(&(cp->mutex));
+
+	return new;
 }

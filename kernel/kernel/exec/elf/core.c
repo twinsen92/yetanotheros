@@ -113,6 +113,7 @@ void exec_user_elf_program(const char *path, const char *stdin, const char *stdo
 	stack = vbreak;
 	stack_size = PAGE_SIZE;
 	vbreak += PAGE_SIZE;
+	proc_set_stack(proc, stack, stack_size);
 
 	/* Set the break pointer now that we have everything covered. */
 	proc_set_break(proc, vbreak);

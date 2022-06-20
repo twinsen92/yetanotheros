@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 pid_t wait(int *status);
+pid_t fork(void);
 
 int brk(void *ptr);
 void *sbrk(int increment);

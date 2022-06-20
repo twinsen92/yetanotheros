@@ -76,6 +76,9 @@ void vmread(paddr_t pd, uvaddr_t v, void *buf, size_t num);
 /* Write num number of bytes from buf into the virtual address v of page tables pd. */
 void vmwrite(paddr_t pd, uvaddr_t v, const void *buf, size_t num);
 
+/* Copy page tables and entire pages from one page directory to the other. */
+void vmdup(paddr_t dest_pd, paddr_t src_pd);
+
 /*
 	Kernel page tables management.
 */

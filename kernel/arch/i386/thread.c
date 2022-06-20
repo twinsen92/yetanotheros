@@ -51,6 +51,8 @@ void x86_thread_construct_empty(struct thread *thread, const char *name, uint16_
 #endif
 
 	thread->state = THREAD_NEW;
+	thread->collected_pid = 0;
+	thread->collected_status = 0;
 	thread->sleep_since = 0;
 	thread->sleep_until = 0;
 	thread->cond = NULL;
@@ -164,7 +166,7 @@ struct thread *kthread_create(void (*entry)(void *), void *cookie, const char *n
 }
 
 /* Setup for the initial user thread stack (starting at x86_thread_switch). */
-static void setup_uthread_stack(struct thread *thread)
+static void setup_uthread_stack(struct thread *thread, struct isr_frame *frame_template)
 {
 	struct isr_frame *isr_frame;
 	struct x86_switch_frame *switch_frame;
@@ -176,20 +178,27 @@ static void setup_uthread_stack(struct thread *thread)
 	thread->arch->esp0 = thread->arch->esp0 - sizeof(struct isr_frame);
 	isr_frame = (struct isr_frame *)thread->arch->esp0;
 
-	/* isr_exit stack */
-	isr_frame->ebp = thread->arch->ebp0;
-	isr_frame->ds = thread->arch->ds;
-	isr_frame->es = thread->arch->ds;
-	isr_frame->fs = 0;
-	isr_frame->gs = 0;
+	if (!frame_template)
+	{
+		/* isr_exit stack */
+		isr_frame->ebp = thread->arch->ebp0;
+		isr_frame->ds = thread->arch->ds;
+		isr_frame->es = thread->arch->ds;
+		isr_frame->fs = 0;
+		isr_frame->gs = 0;
 
-	/* IRET stack. We're returning to a different ring, so we have to also specify SS:ESP. */
-	isr_frame->ss = thread->arch->ds;
-	isr_frame->esp = thread->arch->ebp;
+		/* IRET stack. We're returning to a different ring, so we have to also specify SS:ESP. */
+		isr_frame->ss = thread->arch->ds;
+		isr_frame->esp = thread->arch->ebp;
 
-	isr_frame->eflags = thread->arch->int_enabled ? EFLAGS_IF : 0;
-	isr_frame->cs = thread->arch->cs;
-	isr_frame->eip = (uint32_t)thread->arch->tentry;
+		isr_frame->eflags = thread->arch->int_enabled ? EFLAGS_IF : 0;
+		isr_frame->cs = thread->arch->cs;
+		isr_frame->eip = (uint32_t)thread->arch->tentry;
+	}
+	else
+	{
+		kmemcpy(isr_frame, frame_template, sizeof(struct isr_frame));
+	}
 
 	/* 2. uthread_switch_entry stack. We just write a return address. */
 	thread->arch->esp0 = thread->arch->esp0 - sizeof(uint32_t);
@@ -216,7 +225,32 @@ struct thread *uthread_create(uvaddr_t tentry, uvaddr_t stack, size_t stack_size
 	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
 	x86_thread_construct_thread(thread, name, stack0, 4096, stack, stack_size, tentry, NULL, NULL,
 		true, USER_CODE_SELECTOR, USER_DATA_SELECTOR, parent->arch->pd);
-	setup_uthread_stack(thread);
+	setup_uthread_stack(thread, NULL);
+
+	return thread;
+}
+
+struct thread *uthread_fork_create(struct proc *new_proc, struct thread *template, struct isr_frame *frame_template)
+{
+	struct isr_frame frame;
+	struct thread *thread;
+	vaddr_t stack0;
+
+	/* Make sure we return 0 from the syscall on the forked process. */
+	kmemcpy(&frame, frame_template, sizeof(struct isr_frame));
+	frame.eax = 0;
+
+	/*
+	 * Create a thread that will return from the syscall interrupt handler. This thread will have
+	 * the same state as the current thread.
+	 */
+	stack0 = kalloc(HEAP_NORMAL, 16, 4096);
+	thread = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct thread));
+	thread->arch = kalloc(HEAP_NORMAL, HEAP_NO_ALIGN, sizeof(struct arch_thread));
+	x86_thread_construct_thread(thread, template->name, stack0, 4096, new_proc->arch->vstack,
+			new_proc->arch->stack_size, template->arch->tentry, NULL, NULL,
+			true, USER_CODE_SELECTOR, USER_DATA_SELECTOR, new_proc->arch->pd);
+	setup_uthread_stack(thread, &frame);
 
 	return thread;
 }

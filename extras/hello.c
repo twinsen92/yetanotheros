@@ -27,6 +27,23 @@ int main(int argc, char **argv)
 		printf("Read from /test.txt: %s\n", buf);
 	}
 
+	pid_t pid = fork();
+
+	if (pid == 0)
+	{
+		printf("In child process buf: %s\n", buf);
+		free(buf);
+		exit(2137);
+	}
+
+	printf("Created child process %d\n", pid);
+
+	int status = 0;
+	pid = wait(&status);
+	printf("Collected child process %d with status %d\n", pid, status);
+
+	printf("Again: %s\n", buf);
+
 	free(buf);
 
 	/*

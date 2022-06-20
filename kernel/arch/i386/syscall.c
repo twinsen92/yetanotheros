@@ -1,10 +1,12 @@
 /* arch/i386/syscall.c - x86 syscall entry point */
-#include <kernel/addr.h>
-#include <kernel/syscall_impl.h>
 #include <arch/cpu.h>
 #include <arch/interrupts.h>
 #include <arch/paging.h>
+#include <arch/syscall_impl.h>
 #include <arch/cpu/idt.h>
+
+#include <kernel/addr.h>
+#include <kernel/syscall_impl.h>
 
 #include <user/yaos2/kernel/syscalls.h>
 
@@ -16,6 +18,9 @@ static void syscall_handler(struct isr_frame *frame)
 		syscall_exit(frame->ebx);
 	case SYSCALL_WAIT:
 		frame->eax = (uint32_t)syscall_wait((uvaddr_t)frame->ebx);
+		break;
+	case SYSCALL_FORK:
+		frame->eax = (uint32_t)syscall_fork(frame);
 		break;
 
 	case SYSCALL_BRK:

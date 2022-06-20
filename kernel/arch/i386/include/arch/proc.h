@@ -13,8 +13,12 @@ struct arch_proc
 	paddr_t pd; /* Page directory used by this process. */
 	uvaddr_t vfrom; /* Lowest virtual memory address in use. */
 	uvaddr_t vto; /* Highest virtual memory address in use. */
+	uvaddr_t vstack; /* Main thread stack. */
+	size_t stack_size;
 	uvaddr_t vbreak; /* Program break address. */
 	uvaddr_t cur_vbreak; /* Current program break address. */
 };
+
+struct proc *proc_fork(struct thread **main_thread, struct isr_frame *frame);
 
 #endif

@@ -47,3 +47,17 @@ void* memset(void* bufptr, int value, size_t size)
 		buf[i] = (unsigned char) value;
 	return bufptr;
 }
+
+void *memchr(const void *ptr, int value, size_t num)
+{
+	unsigned char *bptr = (unsigned char *)ptr;
+	size_t i;
+
+	for (i = 0; i < num; i++)
+	{
+		if (bptr[i] == value)
+			return bptr + i;
+	}
+
+	return NULL;
+}

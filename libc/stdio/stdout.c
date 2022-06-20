@@ -37,7 +37,7 @@ static int stdout_put_one(char c)
 
 static int stdout_put_many(const char *str, size_t len)
 {
-	int ret = write(STDOUT_FILENO, str, len);
+	int ret = fwrite(str, 1, len, stdout);
 
 	if (ret < 0)
 	{

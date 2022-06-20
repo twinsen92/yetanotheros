@@ -54,4 +54,6 @@ packed_struct x86_switch_frame
 /* Switches threads by switching stack pointers. */
 void x86_thread_switch(struct arch_thread *current, struct arch_thread *new);
 
+struct thread *uthread_fork_create(struct proc *new_proc, struct thread *template, struct isr_frame *frame_template);
+
 #endif

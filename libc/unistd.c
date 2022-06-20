@@ -25,6 +25,12 @@ pid_t wait(int *status)
 	return set_errno_and_convert(ret);
 }
 
+pid_t fork(void)
+{
+	int ret = syscall0(SYSCALL_FORK);
+	return set_errno_and_convert(ret);
+}
+
 int brk(void *ptr)
 {
 	int ret = syscall1(SYSCALL_BRK, (int)ptr);
