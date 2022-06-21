@@ -32,6 +32,12 @@ pid_t fork(void)
 	return set_errno_and_convert(ret);
 }
 
+pid_t getpid(void)
+{
+	int ret = syscall0(SYSCALL_GETPID);
+	return set_errno_and_convert(ret);
+}
+
 int brk(void *ptr)
 {
 	int ret = syscall1(SYSCALL_BRK, (int)ptr);

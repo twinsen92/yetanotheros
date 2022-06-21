@@ -11,6 +11,7 @@ void init_syscall(void);
 
 noreturn syscall_exit(int status);
 pid_t syscall_wait(uvaddr_t status);
+pid_t syscall_getpid(void);
 
 int syscall_brk(uvaddr_t ptr);
 uvaddr_t syscall_sbrk(uvaddrdiff_t diff);

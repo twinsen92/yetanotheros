@@ -43,3 +43,8 @@ uvaddr_t syscall_getenvptr(void)
 
 	return ret;
 }
+
+pid_t syscall_getpid(void)
+{
+	return get_current_proc()->pid;
+}
