@@ -97,7 +97,7 @@ const char *devfs_root_get_name(__unused struct vfs_node *node)
 	return "";
 }
 
-uint devfs_root_get_size(__unused struct vfs_node *node)
+foffset_t devfs_root_get_size(__unused struct vfs_node *node)
 {
 	return 0;
 }

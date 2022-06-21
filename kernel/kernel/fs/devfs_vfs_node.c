@@ -23,7 +23,7 @@ const char *devfs_node_get_name(struct vfs_node *node)
 	return devfs_get_node_data(node)->node->name;
 }
 
-uint devfs_node_get_size(struct vfs_node *node)
+foffset_t devfs_node_get_size(struct vfs_node *node)
 {
 	struct devfs_vfs_node_data *node_data = devfs_get_node_data(node);
 	kassert(thread_mutex_held(&(node_data->mutex)));

@@ -16,6 +16,7 @@ enum syscall_num
 	SYSCALL_CLOSE,
 	SYSCALL_READ,
 	SYSCALL_WRITE,
+	SYSCALL_LSEEK,
 };
 
 #endif

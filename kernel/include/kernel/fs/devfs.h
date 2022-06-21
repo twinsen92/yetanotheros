@@ -22,7 +22,7 @@ struct devfs_node
 	/* Interface. */
 
 	/* Get the size of this node. */
-	uint (*get_size)(struct devfs_node *node);
+	foffset_t (*get_size)(struct devfs_node *node);
 
 	/* Read num bytes starting at off into buf. Returns the number of read bytes. */
 	int (*read)(struct devfs_node *node, void *buf, uint off, int num);

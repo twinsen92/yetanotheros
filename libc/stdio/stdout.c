@@ -12,8 +12,8 @@
 
 #include "nprintf.h"
 
-static int stdout_put_one(char c);
-static int stdout_put_many(const char *str, size_t len);
+static int stdout_put_one(struct generic_printer *printer, char c);
+static int stdout_put_many(struct generic_printer *printer, const char *str, size_t len);
 
 static struct generic_printer stdout_printer = {
 		.put_one = stdout_put_one,
@@ -22,7 +22,7 @@ static struct generic_printer stdout_printer = {
 
 int putchar(int ic)
 {
-	return stdout_put_one((char)ic);
+	return stdout_put_one(&stdout_printer, (char)ic);
 }
 
 int puts(const char* string)
@@ -30,12 +30,12 @@ int puts(const char* string)
 	return printf("%s\n", string);
 }
 
-static int stdout_put_one(char c)
+static int stdout_put_one(struct generic_printer *printer, char c)
 {
-	return stdout_put_many(&c, 1);
+	return stdout_put_many(printer, &c, 1);
 }
 
-static int stdout_put_many(const char *str, size_t len)
+static int stdout_put_many(struct generic_printer *printer, const char *str, size_t len)
 {
 	int ret = fwrite(str, 1, len, stdout);
 
@@ -48,7 +48,7 @@ static int stdout_put_many(const char *str, size_t len)
 	return ret;
 }
 
-int printf(const char* __restrict format, ...)
+int printf(const char *format, ...)
 {
 	int ret;
 	va_list parameters;
@@ -60,3 +60,7 @@ int printf(const char* __restrict format, ...)
 	return ret;
 }
 
+int vprintf(const char *format, va_list arg)
+{
+	return generic_nprintf(&stdout_printer, NULL, -1, format, arg);
+}

@@ -5,10 +5,12 @@
 
 struct generic_printer
 {
-	int (*put_one)(char c);
-	int (*put_many)(const char *str, size_t len);
+	void *opaque;
+
+	int (*put_one)(struct generic_printer *printer, char c);
+	int (*put_many)(struct generic_printer *printer, const char *str, size_t len);
 };
 
-int generic_nprintf(struct generic_printer *printer, char *dest, int remaining, const char* __restrict format, va_list parameters);
+int generic_nprintf(struct generic_printer *printer, char *dest, int remaining, const char *format, va_list parameters);
 
 #endif

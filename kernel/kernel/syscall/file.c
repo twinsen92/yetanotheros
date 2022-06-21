@@ -8,6 +8,9 @@
 #include <kernel/utils.h>
 #include <kernel/vfs.h>
 
+#include <arch/syscall_impl.h>
+
+#include <user/yaos2/kernel/defs.h>
 #include <user/yaos2/kernel/errno.h>
 
 #define SYSCALL_MAX_PATH_LEN 511
@@ -221,6 +224,48 @@ early_exit:
 	kfree(kbuf);
 
 	proc_set_uvm(proc);
+
+	return ret;
+}
+
+foffset_t syscall_lseek(int fd, foffset_t offset, int whence)
+{
+	struct proc *proc;
+	struct file *file;
+	foffset_t ret;
+
+	if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
+		return -EPARAM;
+
+	proc_set_kvm();
+	proc = get_current_proc();
+
+	/*
+	 * Increment the ref counter in the file object. This way we will be sure we don't read from
+	 * a closed file, but won't have to hold the process lock.
+	 */
+	proc_lock(proc);
+	file = proc_get_file(proc, fd);
+
+	if (file == NULL)
+	{
+		proc_unlock(proc);
+		proc_set_uvm(proc);
+		return -EUNSPEC;
+	}
+
+	file = vfs_file_dup(file);
+	proc_unlock(proc);
+
+	ret = file->seek(file, offset, whence);
+
+	/* Decrement the ref counter. We're done with the file. */
+	vfs_close(file);
+
+	proc_set_uvm(proc);
+
+	if (syscall_check_overflow(ret))
+		return -EOVERFLOW;
 
 	return ret;
 }

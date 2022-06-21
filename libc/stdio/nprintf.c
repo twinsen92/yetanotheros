@@ -25,7 +25,7 @@ static bool print(struct generic_printer *printer,
 		if (dest)
 			dest[off + i] = data[i];
 		else
-			printer->put_one(data[i]);
+			printer->put_one(printer, data[i]);
 
 		(*remaining)--;
 	}
@@ -36,7 +36,7 @@ static bool print(struct generic_printer *printer,
 int generic_nprintf(struct generic_printer *printer,
 		char *dest,
 		int remaining,
-		const char *__restrict format,
+		const char *format,
 		va_list parameters)
 {
 	char buf[32];

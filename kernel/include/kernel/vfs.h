@@ -64,7 +64,7 @@ struct vfs_node
 	const char * (*get_name)(struct vfs_node *node);
 
 	/* Get the size of this node. */
-	uint (*get_size)(struct vfs_node *node);
+	foffset_t (*get_size)(struct vfs_node *node);
 
 	/* Read num bytes starting at off into buf. Returns the number of read bytes. */
 	int (*read)(struct vfs_node *node, void *buf, uint off, int num);
@@ -112,12 +112,11 @@ struct file
 	uint ref;
 
 	/* Dynamic part, protected by node mutex. */
-	uint offset;
+	foffset_t offset;
 
 	int (*read)(struct file *f, void *buf, int num);
 	int (*write)(struct file *f, const void *buf, int num);
-	void (*seek_beg)(struct file *f, uint offset);
-	/* TODO: Add seek. */
+	foffset_t (*seek)(struct file *f, foffset_t offset, int whence);
 
 	LIST_ENTRY(file) lptrs;
 };

@@ -21,7 +21,7 @@ void devfs_put(struct vfs_super *super, struct vfs_node *node);
 void devfs_root_lock(struct vfs_node *node);
 void devfs_root_unlock(struct vfs_node *node);
 const char *devfs_root_get_name(struct vfs_node *node);
-uint devfs_root_get_size(struct vfs_node *node);
+foffset_t devfs_root_get_size(struct vfs_node *node);
 int devfs_root_read(struct vfs_node *node, void *buf, uint off, int num);
 int devfs_root_write(struct vfs_node *node, const void *buf, uint off, int num);
 uint devfs_root_get_num_leaves(struct vfs_node *node);
@@ -45,7 +45,7 @@ struct devfs_vfs_node_data
 void devfs_node_lock(struct vfs_node *node);
 void devfs_node_unlock(struct vfs_node *node);
 const char *devfs_node_get_name(struct vfs_node *node);
-uint devfs_node_get_size(struct vfs_node *node);
+foffset_t devfs_node_get_size(struct vfs_node *node);
 int devfs_node_read(struct vfs_node *node, void *buf, uint off, int num);
 int devfs_node_write(struct vfs_node *node, const void *buf, uint off, int num);
 uint devfs_node_get_num_leaves(struct vfs_node *node);

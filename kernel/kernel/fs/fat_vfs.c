@@ -228,7 +228,7 @@ const char *fat_vfs_node_get_name(struct vfs_node *node)
 }
 
 /* Get the size of this node. */
-uint fat_vfs_node_get_size(struct vfs_node *node)
+foffset_t fat_vfs_node_get_size(struct vfs_node *node)
 {
 	struct fat_vfs_node_data *node_data;
 

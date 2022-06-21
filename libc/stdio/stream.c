@@ -6,12 +6,17 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <yaos2/kernel/defs.h>
 #include <yaos2/kernel/errno.h>
+
+#include "nprintf.h"
+
+/* TODO: Implement and use ferror where appropriate. */
 
 #define min(x, y) ((x) > (y) ? (y) : (x))
 
 #define DEFAULT_BUF_MODE FBM_NEWLINE
-#define DEFAULT_BUF_SIZE 128
+#define DEFAULT_BUF_SIZE BUFSIZ
 
 static char static_stdin_buf[DEFAULT_BUF_SIZE];
 static FILE static_stdin = {
@@ -49,6 +54,136 @@ static FILE static_stderr = {
 FILE *stdin = &static_stdin;
 FILE *stdout = &static_stdout;
 FILE *stderr = &static_stderr;
+
+FILE *fopen(const char *path, const char *mode)
+{
+	int fd;
+	FILE *f;
+
+	/* TODO: Use the file mode. */
+
+	fd = open(path, 0);
+
+	if (fd < 0)
+		return NULL;
+
+	f = malloc(sizeof(FILE));
+	f->fd = fd;
+	f->flags = 0;
+	f->buf_mode = DEFAULT_BUF_MODE;
+	f->buf_foreign = 0;
+	f->buf = malloc(DEFAULT_BUF_SIZE);
+	f->buf_size = DEFAULT_BUF_SIZE;
+	f->num = 0;
+
+	return f;
+}
+
+int fclose(FILE *stream)
+{
+	int fd, ret;
+
+	fd = stream->fd;
+
+	if (!(stream->buf_foreign))
+		free(stream->buf);
+	free(stream);
+
+	ret = close(fd);
+
+	if (ret < 0)
+	{
+		errno = -ret;
+		return EOF;
+	}
+
+	return 0;
+}
+
+void setbuf(FILE *stream, char *buf)
+{
+	if (!(stream->buf_foreign))
+		free(stream->buf);
+
+	stream->buf = buf;
+	stream->buf_foreign = 1;
+}
+
+int fseek(FILE *stream, long int offset, int origin)
+{
+	long int ret;
+
+	ret = lseek(stream->fd, offset, origin);
+
+	if (ret < 0)
+	{
+		errno = -ret;
+		return -1;
+	}
+
+	return 0;
+}
+
+long int ftell(FILE *stream)
+{
+	long int ret;
+
+	ret = lseek(stream->fd, 0, SEEK_CUR);
+
+	if (ret < 0)
+	{
+		errno = -ret;
+		return -1;
+	}
+
+	return ret;
+}
+
+int fputc(int character, FILE *stream)
+{
+	char c;
+	int ret;
+
+	c = (char)character;
+	ret = fwrite(&c, 1, 1, stream);
+
+	/* On error just return EOF, fwrite will have set the errno. */
+	if (ret < 0)
+		return EOF;
+
+	return character;
+}
+
+int fputs(const char *str, FILE *stream)
+{
+	int ret;
+
+	ret = fwrite(str, 1, strlen(str), stream);
+
+	/* On error just return EOF, fwrite will have set the errno. */
+	if (ret < 0)
+		return EOF;
+
+	return ret;
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	ssize_t ret;
+
+	if (size == 0 || nmemb == 0)
+		return 0;
+
+	ret = read(stream->fd, ptr, size * nmemb);
+
+	if (ret < 0)
+	{
+		errno = -ret;
+		return 0;
+	}
+
+	return size * nmemb;
+}
 
 static size_t fwrite_flush(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
@@ -154,10 +289,7 @@ static size_t fwrite_overflow(const void *ptr, size_t size, size_t nmemb, FILE *
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
 	if (size == 0 || nmemb == 0)
-	{
-		errno = 0;
 		return 0;
-	}
 
 	if (stream->buf_mode == FBM_FLUSH)
 		return fwrite_flush(ptr, size, nmemb, stream);
@@ -185,4 +317,47 @@ int fflush(FILE *stream)
 	stream->num = 0;
 
 	return 0;
+}
+
+static int stream_put_many(struct generic_printer *printer, const char *str, size_t len)
+{
+	FILE *stream = (FILE*)printer->opaque;
+	return fwrite(str, 1, len, stream);
+}
+
+static int stream_put_one(struct generic_printer *printer, char c)
+{
+	return stream_put_many(printer, &c, 1);
+}
+
+static inline void build_generic_printer(struct generic_printer *printer, FILE *stream)
+{
+	printer->opaque = stream;
+	printer->put_one = stream_put_one;
+	printer->put_many = stream_put_many;
+}
+
+int fprintf(FILE *stream, const char *format, ...)
+{
+	int ret;
+	va_list parameters;
+	struct generic_printer printer;
+
+	build_generic_printer(&printer, stream);
+	va_start(parameters, format);
+	ret = generic_nprintf(&printer, NULL, -1, format, parameters);
+	va_end(parameters);
+
+	return ret;
+}
+
+int vfprintf(FILE *stream, const char *format, va_list arg)
+{
+	int ret;
+	struct generic_printer printer;
+
+	build_generic_printer(&printer, stream);
+	ret = generic_nprintf(&printer, NULL, -1, format, arg);
+
+	return ret;
 }

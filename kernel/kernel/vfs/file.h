@@ -9,6 +9,6 @@ void vfs_file_init(void);
 
 int vfs_file_read(struct file *f, void *buf, int num);
 int vfs_file_write(struct file *f, const void *buf, int num);
-void vfs_file_seek_beg(struct file *f, uint offset);
+foffset_t vfs_file_seek(struct file *f, foffset_t offset, int whence);
 
 #endif

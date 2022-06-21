@@ -45,6 +45,9 @@ static void syscall_handler(struct isr_frame *frame)
 	case SYSCALL_WRITE:
 		frame->eax = (uint32_t)syscall_write((int)frame->ebx, (uvaddr_t)frame->ecx, (size_t)frame->edx);
 		break;
+	case SYSCALL_LSEEK:
+		frame->eax = (uint32_t)syscall_lseek((int)frame->ebx, (foffset_t)frame->ecx, (int)frame->edx);
+		break;
 	}
 }
 

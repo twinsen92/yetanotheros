@@ -18,7 +18,7 @@ static void handle_section_load(struct proc *proc, struct file *f, struct elf_32
 
 	/* Read the segment contents and write them to the reserved process memory. */
 	contents = kalloc(HEAP_NORMAL, 1, sh->file_size);
-	f->seek_beg(f, sh->file_offset);
+	f->seek(f, sh->file_offset, SEEK_SET);
 	f->read(f, contents, sh->file_size);
 	proc_vmwrite(proc, (uvaddr_t)sh->mem_offset, contents, sh->file_size);
 	kfree(contents);
@@ -76,7 +76,7 @@ void exec_user_elf_program(const char *path, const char *stdin, const char *stdo
 	/* Go to ith entry in the program header table and load it into memory. */
 	for (i = 0; i < header_32.pht_len; i++)
 	{
-		f->seek_beg(f, header_32.pht_pos + (i * header_32.phe_size));
+		f->seek(f, header_32.pht_pos + (i * header_32.phe_size), SEEK_SET);
 		f->read(f, &(program_32), sizeof(program_32));
 
 		/* TODO: More flexibility...? */
@@ -103,7 +103,7 @@ void exec_user_elf_program(const char *path, const char *stdin, const char *stdo
 	/* Go to ith entry in the program header table and load it into memory. */
 	for (i = 0; i < header_32.sht_len; i++)
 	{
-		f->seek_beg(f, header_32.sht_pos + (i * header_32.she_size));
+		f->seek(f, header_32.sht_pos + (i * header_32.she_size), SEEK_SET);
 		f->read(f, &(section_32), sizeof(section_32));
 
 		handle_section(proc, f, &section_32);

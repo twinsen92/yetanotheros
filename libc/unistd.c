@@ -1,12 +1,13 @@
 /* libc/unistd.c - unistd.h implementation */
 
-#include <yaos2/kernel/syscalls.h>
-
-#include <yaos2/arch/syscall.h>
-
 #include <sys/types.h>
 #include <errno.h>
 #include <stddef.h>
+
+#include <yaos2/kernel/syscalls.h>
+#include <yaos2/arch/syscall.h>
+
+/* TODO: Types used here are wrong. */
 
 static inline int set_errno_and_convert(int ret)
 {
@@ -64,6 +65,12 @@ ssize_t read(int fd, void *buf, size_t count)
 ssize_t write(int fd, const void *buf, size_t count)
 {
 	int ret = syscall3(SYSCALL_WRITE, fd, (int)buf, count);
+	return set_errno_and_convert(ret);
+}
+
+long int lseek(int fd, long int offset, int whence)
+{
+	int ret = syscall3(SYSCALL_LSEEK, fd, offset, whence);
 	return set_errno_and_convert(ret);
 }
 

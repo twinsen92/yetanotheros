@@ -101,7 +101,7 @@ void fat_vfs_node_unlock(struct vfs_node *node);
 const char *fat_vfs_node_get_name(struct vfs_node *node);
 
 /* Get the size of this node. */
-uint fat_vfs_node_get_size(struct vfs_node *node);
+foffset_t fat_vfs_node_get_size(struct vfs_node *node);
 
 /* Read num bytes starting at off into buf. Returns the number of read bytes. */
 int fat_vfs_node_read(struct vfs_node *node, void *buf, uint off, int num);

@@ -31,6 +31,7 @@ typedef struct
 	/* TODO: Add a lock. */
 
 	int buf_mode; /* Buffer mode. */
+	int buf_foreign;
 	char *buf; /* Buffer. */
 	size_t buf_size; /* Buffer size in bytes. */
 	size_t num; /* Buffer size in bytes currently in use. */

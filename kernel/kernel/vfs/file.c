@@ -42,7 +42,7 @@ struct file *vfs_open(const char *path)
 	/* Set up the interface. */
 	file->read = vfs_file_read;
 	file->write = vfs_file_write;
-	file->seek_beg = vfs_file_seek_beg;
+	file->seek = vfs_file_seek;
 
 	/* Register it */
 	LIST_INSERT_HEAD(&vfs_file_list, file, lptrs);

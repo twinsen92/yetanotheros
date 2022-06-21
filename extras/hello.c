@@ -19,22 +19,29 @@ static void getenv_and_print(const char *name)
 int main(int argc, char **argv)
 {
 	char *buf;
-	int fd, num;
+	FILE *f;
+	int num;
 
 	buf = malloc(256);
 	memset(buf, 0, 256);
 
 	printf("Hello, user World!\n");
 
-	fd = open("/test.txt", 0);
-	if (fd == -1)
+	f = fopen("/test.txt", "r");
+	if (f == NULL)
 		printf("Could not open /test.txt");
 	else
 	{
-		num = read(fd, buf, 255);
+		num = fread(buf, 1, 255, f);
 		buf[num] = 0;
-		close(fd);
 		printf("Read from /test.txt: %s\n", buf);
+		fseek(f, 6, SEEK_SET);
+		memset(buf, 0, 256);
+		num = fread(buf, 1, 255, f);
+		buf[num] = 0;
+		printf("Read from /test.txt after fseek: %s\n", buf);
+
+		fclose(f);
 	}
 
 	pid_t pid = fork();

@@ -28,6 +28,7 @@ $(ARCH_FREEOBJS) \
 stdio/nprintf.o \
 stdio/stdout.o \
 stdio/stream.o \
+stdio/string.o \
 stdlib/abort.o \
 stdlib/convert.o \
 stdlib/env.o \

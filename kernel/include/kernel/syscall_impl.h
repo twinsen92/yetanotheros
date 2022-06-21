@@ -20,5 +20,6 @@ int syscall_open(uvaddr_t path, int flags);
 int syscall_close(int fd);
 ssize_t syscall_read(int fd, uvaddr_t buf, size_t count);
 ssize_t syscall_write(int fd, uvaddr_t buf, size_t count);
+foffset_t syscall_lseek(int fd, foffset_t offset, int whence);
 
 #endif
